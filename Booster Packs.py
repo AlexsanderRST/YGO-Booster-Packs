@@ -140,9 +140,122 @@ packs_info = {0: {'name': 'Legend of Blue Eyes White Dragon',
                   '%SR': 5,
                   '%UR': 12,
                   '%SctR': 31,
+                  },
+
+              1: {'name': 'Lightning Overdrive',
+                  'cover': '75402014',
+                  'head height': 22,
+                  '#cards': 9,
+                  'Common': ('32164201',
+                             '68258355',
+                             '67436768',
+                             '30829071',
+                             '66192538',
+                             '92586237',
+                             '65479980',
+                             '91642007',
+                             '27036706',
+                             '53535814',
+                             '80529459',
+                             '89707961',
+                             '15792576',
+                             '52296675',
+                             '88685329',
+                             '15079028',
+                             '51474037',
+                             '87468732',
+                             '14957440',
+                             '49407319',
+                             '36346532',
+                             '4017398',
+                             '31002402',
+                             '7496001',
+                             '6374519',
+                             '69167267',
+                             '6552971',
+                             '32056070',
+                             '68045685',
+                             '5439384',
+                             '68223137',
+                             '94317736',
+                             '31712840',
+                             '67100549',
+                             '93595154',
+                             '93473606',
+                             '29867611',
+                             '55262310',
+                             '28645123',
+                             '91534476',
+                             '27923575',
+                             '54927180',
+                             '11110218',
+                             '84903021',
+                             '19275188',
+                             '46660187',
+                             '76029419',
+                             '80088625',
+                             '7984540',
+                             '70473293',),
+                  'Rare': ('92919429',
+                           '94821366',
+                           '26914168',
+                           '40139997',
+                           '1174075',
+                           '73345237',
+                           '70389815',
+                           '10497636',
+                           '53318263',
+                           '31834488'),
+                  'Super Rare': ('31042659',
+                                 '93708824',
+                                 '29107423',
+                                 '29981935',
+                                 '91864689',
+                                 '76524506',
+                                 '12018201',
+                                 '2896663',
+                                 '48285768',
+                                 '47163170',
+                                 '74567889',
+                                 '36224040',
+                                 '62623659',
+                                 '34995106',
+                                 '33773528',
+                                 '20989253',
+                                 '85847157',
+                                 '12332865',
+                                 '58720904',
+                                 '84125619',
+                                 '47504322',
+                                 '83880473',
+                                 '96352326',
+                                 '49964567',
+                                 '44478599',
+                                 '9839945'),
+                  'Ultra Rare': ('4647954',
+                                 '67314110',
+                                 '28868394',
+                                 '40352445',
+                                 '87746184',
+                                 '13735899',
+                                 '75402014',
+                                 '74689476',
+                                 '952523',
+                                 '66984907',
+                                 '92650018',
+                                 '55049722',
+                                 '47882774',
+                                 '54257392',
+                                 '73580471'),
+                  'Secret Rare': (),
+                  '%R': 1,
+                  '%SR': 2,
+                  '%UR': 6,
+                  '%SctR': 0,
                   }}
 
 
+# OBJECTS ##############################################################################################################
 class Card(pygame.sprite.Sprite):
     def __init__(self, code, rarity='Common'):
         super().__init__()
@@ -222,7 +335,7 @@ class BoosterPack(pygame.sprite.Group):
         self.body.rect = self.body.image.get_rect(topleft=self.head.rect.bottomleft)
 
         try:
-            self.img = pygame.image.load('pics/booster/0.png').convert()
+            self.img = pygame.image.load(f'pics/booster/{n}.png').convert_alpha()
             self.head.image.blit(self.img, (0, 0))
             self.body.image.blit(self.img, (0, -head_height))
         except FileNotFoundError:
@@ -237,7 +350,7 @@ class BoosterPack(pygame.sprite.Group):
                                                      (288, 420))
             cover = pygame.Surface((222, 222))
             cover.blit(cover_img, (-33, -75))
-            cover_rect = cover.get_rect(center=(width/2, 1/3*height))
+            cover_rect = cover.get_rect(center=(width / 2, 1 / 3 * height))
             self.body.image.blit(cover, cover_rect)
 
         self.add(self.head, self.body)
@@ -266,6 +379,12 @@ class BoosterPack(pygame.sprite.Group):
             self.head.rect = self.head.image.get_rect(bottomright=self.body.rect.topright)
 
 
+########################################################################################################################
+
+# SCREENS ##############################################################################################################
+
+########################################################################################################################
+
 class Game:
     def __init__(self):
         # display
@@ -276,7 +395,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.loop = True
         self.events = pygame.event.get()
-        
+
         # status
         self.card_moving = False
         self.open_pack = False
@@ -284,7 +403,7 @@ class Game:
         # properties
         self.cards = pygame.sprite.LayeredUpdates()
 
-        self.current_pack = 0
+        self.current_pack = 1
         pack = packs_info[self.current_pack]
         self.generate_pack(pack)
         self.pack = BoosterPack(self.current_pack)
