@@ -7,7 +7,8 @@ import math
 pygame.init()
 
 packs_info = {0: {'name': 'Legend of Blue Eyes White Dragon',
-                  'sig card': '89631140',
+                  'cover': '89631140',
+                  'head height': 20,
                   '#cards': 9,
                   'Common': ('76184692',
                              '32274490',
@@ -138,20 +139,27 @@ packs_info = {0: {'name': 'Legend of Blue Eyes White Dragon',
                   '%R': 1,
                   '%SR': 5,
                   '%UR': 12,
-                  '%SctR': 31
+                  '%SctR': 31,
                   }}
 
 
 class Card(pygame.sprite.Sprite):
     def __init__(self, code, rarity='Common'):
         super().__init__()
+
+        self.pic = pygame.image.load(f'pics/{code}.jpg')
         self.width, self.height = 288, 420
-        self.image = pygame.transform.smoothscale(pygame.image.load(f'pics/{code}.jpg').convert(),
-                                                  (self.width, self.height))
+
+        self.image = pygame.transform.smoothscale(self.pic.convert(), (self.width, self.height))
         self.rect = self.image.get_rect()
         self.vel = pygame.math.Vector2()
         self.anim = self.idle
-        self.rarity = rarity
+
+        if rarity != 'Common':
+            label = pygame.sprite.Sprite()
+            label.image = pygame.image.load(f'pics/booster/{rarity}.png').convert_alpha()
+            label.rect = label.image.get_rect(topright=self.rect.topright)
+            self.image.blit(label.image, label.rect)
 
     def update(self):
         self.rect.center += self.vel
@@ -196,23 +204,42 @@ class Card(pygame.sprite.Sprite):
 
 
 class BoosterPack(pygame.sprite.Group):
-    def __init__(self, head_height=20):
+    def __init__(self, n):
         super().__init__()
 
-        # if image exists
-        self.img = pygame.image.load('pics/booster/0.png').convert()
+        info = packs_info[n]
+        width, height = 290, 530
+        head_height = info['head height']
+
         # head
         self.head = pygame.sprite.Sprite()
-        self.head.image = pygame.Surface((self.img.get_width(), head_height))
-        self.head.image.blit(self.img, (0, 0))
+        self.head.image = pygame.Surface((width, head_height), SRCALPHA)
         self.head.rect = self.head.image.get_rect(topleft=(367, 35))
+
         # body
         self.body = pygame.sprite.Sprite()
-        self.body.image = pygame.Surface((self.img.get_width(), self.img.get_height() - head_height))
-        self.body.image.blit(self.img, (0, -head_height))
+        self.body.image = pygame.Surface((width, height - head_height), SRCALPHA)
         self.body.rect = self.body.image.get_rect(topleft=self.head.rect.bottomleft)
-        # openner
-        self.opener = pygame.Rect(*self.head.rect.topleft, 20, 20)
+
+        try:
+            self.img = pygame.image.load('pics/booster/0.png').convert()
+            self.head.image.blit(self.img, (0, 0))
+            self.body.image.blit(self.img, (0, -head_height))
+        except FileNotFoundError:
+            skin = pygame.image.load('skin/Purple - Obsessed/button.png').convert_alpha()
+            self.img = pygame.transform.smoothscale(skin.copy(), (width, head_height))
+            self.head.image.blit(self.img, (0, 0))
+            self.img = pygame.transform.smoothscale(skin.copy(), (width, height - head_height))
+            self.body.image.blit(self.img, (0, 0))
+
+            # test
+            cover_img = pygame.transform.smoothscale(pygame.image.load(f'pics/{info["cover"]}.jpg').convert(),
+                                                     (288, 420))
+            cover = pygame.Surface((222, 222))
+            cover.blit(cover_img, (-33, -75))
+            cover_rect = cover.get_rect(center=(width/2, 1/3*height))
+            self.body.image.blit(cover, cover_rect)
+
         self.add(self.head, self.body)
 
         self.openning = False
@@ -256,9 +283,11 @@ class Game:
 
         # properties
         self.cards = pygame.sprite.LayeredUpdates()
-        self.pack = BoosterPack()
 
-        self.generate_pack(packs_info[0])
+        self.current_pack = 0
+        pack = packs_info[self.current_pack]
+        self.generate_pack(pack)
+        self.pack = BoosterPack(self.current_pack)
 
     def run(self):
         while self.loop:
@@ -302,6 +331,9 @@ class Game:
                                 break
                 else:
                     self.pack.openning = True
+            elif event.type == KEYDOWN:
+                if event.key == K_SPACE:
+                    self.new_pack()
 
     def get_top_card(self):
         return self.cards.get_top_sprite()
@@ -340,6 +372,12 @@ class Game:
             card.rect.center = self.display_w / 2, self.display_h / 2
             self.cards.add(card)
             self.cards.change_layer(card, index)
+
+    def new_pack(self):
+        pack = packs_info[self.current_pack]
+        self.generate_pack(pack)
+        self.pack = BoosterPack(self.current_pack)
+        self.open_pack = False
 
     @staticmethod
     def get_rarity(pack_info, card):
