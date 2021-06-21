@@ -255,7 +255,8 @@ packs_info = {0: {'name': 'Legend of Blue Eyes White Dragon',
                   }}
 
 
-# OBJECTS ##############################################################################################################
+# OBJECTS
+
 class Card(pygame.sprite.Sprite):
     def __init__(self, code, rarity='Common'):
         super().__init__()
@@ -281,39 +282,47 @@ class Card(pygame.sprite.Sprite):
     def idle(self):
         pass
 
-    def move_to_back(self):
-        if self == game.cards.get_top_sprite():
+    def move_to_back(self, speed=20.):
+        cards = game.screen.cards
+        if self == cards.get_top_sprite():
             if self.rect.left < game.display_w / 2 + self.width / 2:
-                self.vel.x = 32.
+                self.vel.x = speed
             else:
                 self.rect.left = game.display_w / 2 + self.width / 2
                 self.vel.x = 0.
-                game.cards.move_to_back(self)
+                cards.move_to_back(self)
         else:
             if self.rect.centerx > game.display_w / 2:
-                self.vel.x = -16.
+                self.vel.x = -speed
             else:
                 self.rect.centerx = game.display_w / 2
                 self.vel.x = 0.
                 self.anim = self.idle
-                game.card_moving = False
+                game.screen.card_moving = False
 
-    def move_to_front(self):
-        if self == game.get_bottom_card():
+    def move_to_front(self, speed=20.):
+        cards = game.screen.cards
+        if self == game.screen.get_bottom_card():
             if self.rect.left < game.display_w / 2 + self.width / 2:
-                self.vel.x = 16.
+                self.vel.x = speed
             else:
                 self.rect.left = game.display_w / 2 + self.width / 2
                 self.vel.x = 0.
-                game.cards.move_to_front(self)
+                cards.move_to_front(self)
         else:
             if self.rect.centerx > game.display_w / 2:
-                self.vel.x = -16.
+                self.vel.x = -speed
             else:
                 self.rect.centerx = game.display_w / 2
                 self.vel.x = 0.
                 self.anim = self.idle
-                game.card_moving = False
+                game.screen.card_moving = False
+
+
+def get_rarity(pack_info, card):
+    for i in ('Common', 'Rare', 'Super Rare', 'Ultra Rare', 'Secret Rare'):
+        if card in pack_info[i]:
+            return i
 
 
 class BoosterPack(pygame.sprite.Group):
@@ -365,105 +374,81 @@ class BoosterPack(pygame.sprite.Group):
     def draw(self, surface):
         super().draw(surface)
 
-    def unpack(self, speed=12):
+    def unpack(self, speed=18):
         head_width = self.head.image.get_width() - speed
         if head_width <= 0:
             self.remove(self.head)
             if self.body.rect.top <= game.display_h:
                 self.body.rect.y += speed
             else:
-                game.open_pack = True
+                game.screen.open_pack = True
         else:
             self.head.image = pygame.transform.scale(self.head.image.copy(),
                                                      (head_width, self.head.image.get_height()))
             self.head.rect = self.head.image.get_rect(bottomright=self.body.rect.topright)
 
 
-########################################################################################################################
+# SCREENS
 
-# SCREENS ##############################################################################################################
-
-########################################################################################################################
-
-class Game:
+class SelectionScreen:
     def __init__(self):
-        # display
-        self.display_w, self.display_h = 1024, 600
-        self.display = pygame.display.set_mode((self.display_w, self.display_h))
-        pygame.display.set_caption('Booster Packs')
+        self.packs = pygame.sprite.Group()
 
-        self.clock = pygame.time.Clock()
-        self.loop = True
-        self.events = pygame.event.get()
+    def update(self):
+        pass
 
-        # status
+    def draw(self):
+        pass
+
+    def event_check(self):
+        pass
+
+
+class UnpackScreen:
+    def __init__(self, current_pack):
+        pack = packs_info[current_pack]
+        self.pack = BoosterPack(current_pack)
+        self.cards = pygame.sprite.LayeredUpdates()
+        self.generate_pack(pack)
         self.card_moving = False
         self.open_pack = False
 
-        # properties
-        self.cards = pygame.sprite.LayeredUpdates()
+    def update(self):
+        self.event_check()
+        if self.open_pack:
+            self.cards.update()
+        else:
+            self.pack.update()
 
-        self.current_pack = 1
-        pack = packs_info[self.current_pack]
-        self.generate_pack(pack)
-        self.pack = BoosterPack(self.current_pack)
-
-    def run(self):
-        while self.loop:
-            self.event_check()
-
-            # update
-            if self.open_pack:
-                self.cards.update()
-            else:
-                self.pack.update()
-
-            # draw
-            self.display.fill((33, 23, 34))
-            self.cards.draw(self.display)
-            self.pack.draw(self.display)
-
-            pygame.display.update()
-            self.clock.tick(60)
-        pygame.quit()
+    def draw(self, surface):
+        surface.fill((33, 23, 34))
+        self.cards.draw(surface)
+        self.pack.draw(surface)
 
     def event_check(self):
-        self.events = pygame.event.get()
-        for event in self.events:
+        for event in game.events:
             if event.type == QUIT:
-                self.loop = False
+                game.loop = False
+
+            # Mouse input
             elif event.type == MOUSEBUTTONDOWN:
-                #
                 if self.open_pack:
                     for card in self.cards:
                         if card.rect.collidepoint(event.pos):
                             if not self.card_moving:
                                 if event.button == 1:
-                                    selected_card = self.get_top_card()
-                                    selected_card.anim = selected_card.move_to_back
+                                    chosen_card = self.get_top_card()
+                                    chosen_card.anim = chosen_card.move_to_back
                                 elif event.button == 3:
-                                    selected_card = self.get_bottom_card()
-                                    selected_card.anim = selected_card.move_to_front
+                                    chosen_card = self.get_bottom_card()
+                                    chosen_card.anim = chosen_card.move_to_front
                                 else:
                                     break
                                 self.card_moving = True
                                 break
                 else:
-                    self.pack.openning = True
-            elif event.type == KEYDOWN:
-                if event.key == K_SPACE:
-                    self.new_pack()
-
-    def get_top_card(self):
-        return self.cards.get_top_sprite()
-
-    def get_bottom_card(self):
-        bottom_card, bottom_layer = None, 5
-        for card in self.cards:
-            if card.layer < bottom_layer:
-                bottom_layer = card.layer
-                bottom_card = card
-        return bottom_card
+                    if event.button == 1 or 3:
+                        self.pack.openning = True
 
     def generate_pack(self, info):
         self.cards.empty()
@@ -487,22 +472,50 @@ class Game:
 
         # Put cards into pack:
         for index, code in enumerate(cards):
-            card = Card(code, self.get_rarity(info, code))
-            card.rect.center = self.display_w / 2, self.display_h / 2
+            card = Card(code, get_rarity(info, code))
+            card.rect.center = 512, 300  # Screen center
             self.cards.add(card)
             self.cards.change_layer(card, index)
 
-    def new_pack(self):
-        pack = packs_info[self.current_pack]
-        self.generate_pack(pack)
-        self.pack = BoosterPack(self.current_pack)
-        self.open_pack = False
+    def get_top_card(self):
+        return self.cards.get_top_sprite()
 
-    @staticmethod
-    def get_rarity(pack_info, card):
-        for i in ('Common', 'Rare', 'Super Rare', 'Ultra Rare', 'Secret Rare'):
-            if card in pack_info[i]:
-                return i
+    def get_bottom_card(self):
+        bottom_card, bottom_layer = None, 5
+        for card in self.cards:
+            if card.layer < bottom_layer:
+                bottom_layer = card.layer
+                bottom_card = card
+        return bottom_card
+
+
+# APP
+class Game:
+    def __init__(self):
+        # display
+        self.display_w, self.display_h = 1024, 600
+        self.display = pygame.display.set_mode((self.display_w, self.display_h))
+        pygame.display.set_caption('Booster Packs')
+
+        # properties
+        self.clock = pygame.time.Clock()
+        self.loop = True
+        self.events = pygame.event.get()
+
+        self.screens = {'unpack': UnpackScreen(0)}
+        self.screen = self.screens['unpack']
+
+    def run(self):
+        while self.loop:
+            self.event_check()
+            self.screen.update()
+            self.screen.draw(self.display)
+            pygame.display.update()
+            self.clock.tick(60)
+        pygame.quit()
+
+    def event_check(self):
+        self.events = pygame.event.get()
 
 
 if __name__ == '__main__':
