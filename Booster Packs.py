@@ -6,7 +6,7 @@ import math
 
 pygame.init()
 
-packs_info = {0: {'name': 'Legend of Blue Eyes White Dragon',
+packs_info = {0: {'name': ('Legend of', 'Blue Eyes White Dragon',),
                   'cover': '89631140',
                   'head height': 20,
                   '#cards': 9,
@@ -142,7 +142,7 @@ packs_info = {0: {'name': 'Legend of Blue Eyes White Dragon',
                   '%SctR': 31,
                   },
 
-              1: {'name': 'Lightning Overdrive',
+              1: {'name': ('Lightning Overdrive',),
                   'cover': '75402014',
                   'head height': 22,
                   '#cards': 9,
@@ -269,9 +269,22 @@ class Card(pygame.sprite.Sprite):
         self.vel = pygame.math.Vector2()
         self.anim = self.idle
 
-        if rarity != 'Common':
+        if rarity != 'Common':  # make a function?
             label = pygame.sprite.Sprite()
-            label.image = pygame.image.load(f'pics/booster/{rarity}.png').convert_alpha()
+            try:
+                label.image = pygame.image.load(f'pics/booster/{rarity}.png').convert_alpha()
+            except FileNotFoundError:
+                label_info = {'Rare':        {'Text': 'R', 'Color': (48, 124, 243)},
+                              'Super Rare':  {'Text': 'SR', 'Color': (248, 209, 0)},
+                              'Ultra Rare':  {'Text': 'UR', 'Color': (13, 230, 234)},
+                              'Secret Rare': {'Text': 'SE', 'Color': (32, 32, 32)}}
+                font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 18)
+                font.set_bold(True)
+                label.image = pygame.Surface((83, 21))
+                label.image.fill(label_info[rarity]['Color'])
+                text = font.render(label_info[rarity]['Text'], True, Color('white'), label_info[rarity]['Color'])
+                text_rect = text.get_rect(center=(label.image.get_width()/2, label.image.get_height()/2))
+                label.image.blit(text, text_rect)
             label.rect = label.image.get_rect(topright=self.rect.topright)
             self.image.blit(label.image, label.rect)
 
@@ -354,13 +367,22 @@ class BoosterPack(pygame.sprite.Group):
             self.img = pygame.transform.smoothscale(skin.copy(), (width, height - head_height))
             self.body.image.blit(self.img, (0, 0))
 
-            # test
+            # pack's cover art
             cover_img = pygame.transform.smoothscale(pygame.image.load(f'pics/{info["cover"]}.jpg').convert(),
                                                      (288, 420))
             cover = pygame.Surface((222, 222))
             cover.blit(cover_img, (-33, -75))
             cover_rect = cover.get_rect(center=(width / 2, 1 / 3 * height))
             self.body.image.blit(cover, cover_rect)
+
+            # pack's name
+            font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 23)
+            last_bottom = cover_rect.bottom + 10
+            for i in info['name']:
+                text = font.render(i, True, Color('white'))
+                text_rect = text.get_rect(midtop=(cover_rect.centerx, last_bottom))
+                self.body.image.blit(text, text_rect)
+                last_bottom = text_rect.bottom
 
         self.add(self.head, self.body)
 
@@ -394,7 +416,7 @@ class BoosterPack(pygame.sprite.Group):
                                                      (head_width, self.head.image.get_height()))
             self.head.rect = self.head.image.get_rect(bottomright=self.body.rect.topright)
 
-    def check_hovered(self, event_pos):
+    def hovered(self, event_pos):
         if self.head.rect.collidepoint(event_pos) or self.body.rect.collidepoint(event_pos):
             return True
         return False
@@ -432,7 +454,7 @@ class SelectionScreen:
                 game.loop = False
             elif event.type == MOUSEBUTTONDOWN:
                 for pack in self.packs:
-                    if pack.check_hovered(event.pos):
+                    if pack.hovered(event.pos):
                         game.screens['unpack'] = UnpackScreen(pack.n)
                         game.screen = game.screens['unpack']
 
