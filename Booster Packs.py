@@ -329,19 +329,19 @@ class BoosterPack(pygame.sprite.Group):
     def __init__(self, n):
         super().__init__()
 
+        self.n = n
         info = packs_info[n]
         width, height = 290, 530
         head_height = info['head height']
+        self.openning = False
 
         # head
         self.head = pygame.sprite.Sprite()
         self.head.image = pygame.Surface((width, head_height), SRCALPHA)
-        self.head.rect = self.head.image.get_rect(topleft=(367, 35))
 
         # body
         self.body = pygame.sprite.Sprite()
         self.body.image = pygame.Surface((width, height - head_height), SRCALPHA)
-        self.body.rect = self.body.image.get_rect(topleft=self.head.rect.bottomleft)
 
         try:
             self.img = pygame.image.load(f'pics/booster/{n}.png').convert_alpha()
@@ -364,11 +364,18 @@ class BoosterPack(pygame.sprite.Group):
 
         self.add(self.head, self.body)
 
-        self.openning = False
+        # Positioning
+        self.rect = pygame.Rect(367, 35, 1, 1)
+        self.head.rect = self.head.image.get_rect(topleft=self.rect.topleft)
+        self.body.rect = self.body.image.get_rect(topleft=self.head.rect.bottomleft)
 
     def update(self):
         if self.openning:
             self.unpack()
+        else:
+            self.head.rect.topleft = self.rect.topleft
+            self.body.rect.topleft = self.head.rect.bottomleft
+
         super().update()
 
     def draw(self, surface):
@@ -387,21 +394,47 @@ class BoosterPack(pygame.sprite.Group):
                                                      (head_width, self.head.image.get_height()))
             self.head.rect = self.head.image.get_rect(bottomright=self.body.rect.topright)
 
+    def check_hovered(self, event_pos):
+        if self.head.rect.collidepoint(event_pos) or self.body.rect.collidepoint(event_pos):
+            return True
+        return False
+
 
 # SCREENS
 
 class SelectionScreen:
     def __init__(self):
-        self.packs = pygame.sprite.Group()
+        self.packs = []
+
+        # packs setup
+        space = 10
+        last_right = space
+        for i in packs_info:
+            pack = BoosterPack(i)
+            pack.rect.topleft = last_right + space, 35
+            pack.update()
+            self.packs.append(pack)
+            last_right = pack.body.rect.right
 
     def update(self):
-        pass
+        self.event_check()
+        for pack in self.packs:
+            pack.update()
 
-    def draw(self):
-        pass
+    def draw(self, surface):
+        surface.fill((33, 23, 34))
+        for pack in self.packs:
+            pack.draw(surface)
 
     def event_check(self):
-        pass
+        for event in game.events:
+            if event.type == QUIT:
+                game.loop = False
+            elif event.type == MOUSEBUTTONDOWN:
+                for pack in self.packs:
+                    if pack.check_hovered(event.pos):
+                        game.screens['unpack'] = UnpackScreen(pack.n)
+                        game.screen = game.screens['unpack']
 
 
 class UnpackScreen:
@@ -413,6 +446,17 @@ class UnpackScreen:
         self.card_moving = False
         self.open_pack = False
 
+        self.bg_color = (33, 23, 34)
+
+        # counter
+        self.counter = 1
+        for card in self.cards:
+            self.card_midbottom = card.rect.midbottom
+            break
+
+        self.font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 20)
+        self.font.set_bold(True)
+
     def update(self):
         self.event_check()
         if self.open_pack:
@@ -421,8 +465,14 @@ class UnpackScreen:
             self.pack.update()
 
     def draw(self, surface):
-        surface.fill((33, 23, 34))
+        surface.fill(self.bg_color)
         self.cards.draw(surface)
+
+        # counter
+        counter = self.font.render(f'({self.counter}/{len(self.cards)})', True, Color('white'), self.bg_color)
+        counter_rect = counter.get_rect(midtop=(self.card_midbottom[0] + 13, self.card_midbottom[1]))
+        surface.blit(counter, counter_rect)
+
         self.pack.draw(surface)
 
     def event_check(self):
@@ -439,9 +489,15 @@ class UnpackScreen:
                                 if event.button == 1:
                                     chosen_card = self.get_top_card()
                                     chosen_card.anim = chosen_card.move_to_back
+                                    self.counter += 1
+                                    if self.counter > len(self.cards):
+                                        self.counter = 1
                                 elif event.button == 3:
                                     chosen_card = self.get_bottom_card()
                                     chosen_card.anim = chosen_card.move_to_front
+                                    self.counter -= 1
+                                    if self.counter < 1:
+                                        self.counter = len(self.cards)
                                 else:
                                     break
                                 self.card_moving = True
@@ -449,6 +505,11 @@ class UnpackScreen:
                 else:
                     if event.button == 1 or 3:
                         self.pack.openning = True
+
+            # keyboard input
+            elif event.type == KEYDOWN:
+                if event.key == K_ESCAPE:
+                    game.screen = game.screens['choose']
 
     def generate_pack(self, info):
         self.cards.empty()
@@ -502,8 +563,9 @@ class Game:
         self.loop = True
         self.events = pygame.event.get()
 
-        self.screens = {'unpack': UnpackScreen(0)}
-        self.screen = self.screens['unpack']
+        self.screens = {'unpack': UnpackScreen(0),
+                        'choose': SelectionScreen()}
+        self.screen = self.screens['choose']
 
     def run(self):
         while self.loop:
