@@ -74,17 +74,18 @@ packs_info = {0: {'name': ('Legend of', 'Blue Eyes White Dragon',),
                   '%SctR': 0,
                   }}
 
+# SFXs
 sfx_open_pack = pygame.mixer.Sound('sound/attack.wav')
 sfx_next_card = pygame.mixer.Sound('sound/draw.wav')
 
 
 # OBJECTS
-
 class Card(pygame.sprite.Sprite):
-    def __init__(self, code, rarity='Common'):
+    def __init__(self, card_id, rarity='Common'):
         super().__init__()
 
-        self.pic = pygame.image.load(f'pics/{code}.jpg')
+        self.id = card_id
+        self.pic = pygame.image.load(f'pics/{card_id}.jpg')
         self.width, self.height = 288, 420
 
         self.image = pygame.transform.smoothscale(self.pic.convert(), (self.width, self.height))
@@ -246,7 +247,6 @@ class BoosterPack(pygame.sprite.Group):
 
 
 # SCREENS
-
 class SelectionScreen:
     def __init__(self):
         self.packs = []
@@ -267,7 +267,8 @@ class SelectionScreen:
             pack.update()
 
     def draw(self, surface):
-        surface.fill((33, 23, 34))
+        surface.fill((0, 0, 0))
+        surface.blit(game.bg, (0, 0))
         for pack in self.packs:
             pack.draw(surface)
 
@@ -276,10 +277,17 @@ class SelectionScreen:
             if event.type == QUIT:
                 game.loop = False
             elif event.type == MOUSEBUTTONDOWN:
-                for pack in self.packs:
-                    if pack.hovered(event.pos):
-                        game.screens['unpack'] = UnpackScreen(pack.n)
-                        game.screen = game.screens['unpack']
+                if event.button == 1:
+                    for pack in self.packs:
+                        if pack.hovered(event.pos):
+                            game.screens['unpack'] = UnpackScreen(pack.n)
+                            game.screen = game.screens['unpack']
+                elif event.button == 4:
+                    for pack in self.packs:
+                        pack.rect.x -= 80
+                elif event.button == 5:
+                    for pack in self.packs:
+                        pack.rect.x += 80
 
 
 class UnpackScreen:
@@ -291,7 +299,7 @@ class UnpackScreen:
         self.card_moving = False
         self.open_pack = False
 
-        self.bg_color = (33, 23, 34)
+        # self.bg_color = (33, 23, 34)
 
         # counter
         self.counter = 1
@@ -302,6 +310,8 @@ class UnpackScreen:
         self.font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 20)
         self.font.set_bold(True)
 
+        self.detail_button = pygame.Rect(376, 320, 271, 180)
+
     def update(self):
         self.event_check()
         if self.open_pack:
@@ -310,11 +320,12 @@ class UnpackScreen:
             self.pack.update()
 
     def draw(self, surface):
-        surface.fill(self.bg_color)
+        surface.fill((0, 0, 0))
+        surface.blit(game.bg, (0, 0))
         self.cards.draw(surface)
 
         # counter
-        counter = self.font.render(f'({self.counter}/{len(self.cards)})', True, Color('white'), self.bg_color)
+        counter = self.font.render(f'({self.counter}/{len(self.cards)})', True, Color('white'))
         counter_rect = counter.get_rect(midtop=(self.card_midbottom[0] + 13, self.card_midbottom[1]))
         surface.blit(counter, counter_rect)
 
@@ -349,6 +360,10 @@ class UnpackScreen:
                                     break
                                 self.card_moving = True
                                 break
+                    if self.detail_button.collidepoint(event.pos) and event.button == 2:
+                        game.screens['detail'] = DetailScreen(self.get_top_card().id)
+                        game.screen = game.screens['detail']
+
                 else:
                     if event.button == 1 or event.button == 3:
                         if not self.pack.openning:
@@ -381,8 +396,8 @@ class UnpackScreen:
         cards.insert(info['#cards'] // 2, picked_rare)
 
         # Put cards into pack:
-        for index, code in enumerate(cards):
-            card = Card(code, get_rarity(info, code))
+        for index, card_id in enumerate(cards):
+            card = Card(card_id, get_rarity(info, card_id))
             card.rect.center = 512, 300  # Screen center
             self.cards.add(card)
             self.cards.change_layer(card, index)
@@ -399,6 +414,40 @@ class UnpackScreen:
         return bottom_card
 
 
+class DetailScreen:
+    def __init__(self, card_id):
+        card = pygame.sprite.Sprite()
+        card.image = pygame.image.load(f'pics/{card_id}.jpg')
+        card_w, card_h = card.image.get_size()
+        card.image = pygame.transform.smoothscale(card.image,
+                                                  (624, round(card_h/card_w * 624)))
+        card.rect = card.image.get_rect(midbottom=(512, 500))
+        self.card = pygame.sprite.GroupSingle(card)
+
+    def update(self):
+        self.event_check()
+        self.card.update()
+
+    def draw(self, surface):
+        surface.fill((0, 0, 0))
+        surface.blit(game.bg, (0, 0))
+        self.card.draw(surface)
+
+    def event_check(self):
+        for event in game.events:
+            if event.type == QUIT:
+                game.loop = False
+            elif event.type == MOUSEBUTTONDOWN:
+                self.quit()
+            elif event.type == KEYDOWN:
+                if event.key == K_ESCAPE:
+                    self.quit()
+
+    @staticmethod
+    def quit():
+        game.screen = game.screens['unpack']
+
+
 # APP
 class Game:
     def __init__(self):
@@ -407,13 +456,21 @@ class Game:
         self.display = pygame.display.set_mode((self.display_w, self.display_h))
         pygame.display.set_caption('Booster Packs')
 
+        # bg
+        self.bg = pygame.transform.smoothscale(
+            pygame.image.load('textures/bg_deck.png').convert(),
+            (self.display_w, self.display_h)
+        )
+        self.bg.set_alpha(128)
+
         # properties
         self.clock = pygame.time.Clock()
         self.loop = True
         self.events = pygame.event.get()
 
         self.screens = {'unpack': UnpackScreen(0),
-                        'choose': SelectionScreen()}
+                        'choose': SelectionScreen(),
+                        'detail': DetailScreen('3611830')}
         self.screen = self.screens['choose']
 
     def run(self):
