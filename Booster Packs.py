@@ -191,53 +191,38 @@ class BoosterPack(pygame.sprite.Group):
         super().__init__()
 
         self.n = n
-        info = packs_info[n]
-        width, height = 290, 530
-        head_height = info['head height']
+        self.info = packs_info[n]
+        self.width, self.height = 290, 530
+        self.head_height = self.info['head height']
         self.openning = False
+
+        # surface
+        surface = self.get_surface()
 
         # head
         self.head = pygame.sprite.Sprite()
-        self.head.image = pygame.Surface((width, head_height), SRCALPHA)
+        self.head.image = pygame.Surface((self.width, self.head_height), SRCALPHA)
+        self.head.image.blit(surface, (0, 0))
 
         # body
         self.body = pygame.sprite.Sprite()
-        self.body.image = pygame.Surface((width, height - head_height), SRCALPHA)
-
-        try:
-            self.img = pygame.image.load(f'pics/booster/{n}.png').convert_alpha()
-            self.head.image.blit(self.img, (0, 0))
-            self.body.image.blit(self.img, (0, -head_height))
-        except FileNotFoundError:
-            skin = pygame.image.load('skin/Purple - Obsessed/button.png').convert_alpha()
-            self.img = pygame.transform.smoothscale(skin.copy(), (width, head_height))
-            self.head.image.blit(self.img, (0, 0))
-            self.img = pygame.transform.smoothscale(skin.copy(), (width, height - head_height))
-            self.body.image.blit(self.img, (0, 0))
-
-            # pack's cover art
-            cover_img = pygame.transform.smoothscale(pygame.image.load(f'pics/{info["cover"]}.jpg').convert(),
-                                                     (288, 420))
-            cover = pygame.Surface((222, 222))
-            cover.blit(cover_img, (-33, -75))
-            cover_rect = cover.get_rect(center=(width / 2, 1 / 3 * height))
-            self.body.image.blit(cover, cover_rect)
-
-            # pack's name
-            font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 23)
-            last_bottom = cover_rect.bottom + 10
-            for i in info['name']:
-                text = font.render(i, True, Color('white'))
-                text_rect = text.get_rect(midtop=(cover_rect.centerx, last_bottom))
-                self.body.image.blit(text, text_rect)
-                last_bottom = text_rect.bottom
-
-        self.add(self.head, self.body)
+        self.body.image = pygame.Surface((self.width, self.height - self.head_height), SRCALPHA)
+        self.body.image.blit(surface, (0, -self.head_height))
 
         # positioning
         self.rect = pygame.Rect(367, 35, 1, 1)
         self.head.rect = self.head.image.get_rect(topleft=self.rect.topleft)
         self.body.rect = self.body.image.get_rect(topleft=self.head.rect.bottomleft)
+
+        # view
+        self.view = pygame.sprite.Sprite()
+        self.view.image = pygame.transform.smoothscale(surface.copy(), (self.width, self.height))
+        self.view.rect = self.view.image.get_rect()
+
+        # miniature
+        self.mini = pygame.sprite.Sprite()
+
+        self.add(self.body, self.head)
 
     def update(self):
         if self.openning:
@@ -245,6 +230,7 @@ class BoosterPack(pygame.sprite.Group):
         else:
             self.head.rect.topleft = self.rect.topleft
             self.body.rect.topleft = self.head.rect.bottomleft
+            self.view.rect.topleft = self.rect.topleft
 
         super().update()
 
@@ -268,6 +254,45 @@ class BoosterPack(pygame.sprite.Group):
         if self.head.rect.collidepoint(event_pos) or self.body.rect.collidepoint(event_pos):
             return True
         return False
+
+    def get_surface(self):
+        try:
+            surface = pygame.image.load(f'pics/booster/{self.n}.png').convert_alpha()
+        except FileNotFoundError:
+
+            # presets
+            self.head_height = 40
+            surface = pygame.Surface((self.width, self.height))
+
+            # head
+            head = pygame.Surface((self.width, self.head_height))
+            head.fill((43, 43, 43))
+            surface.blit(head, (0, 0))
+
+            # body
+            body_height = self.height - self.head_height
+            body = self.get_cropped_art(self.info['cover'])
+            body = pygame.transform.smoothscale(body.copy(), (body_height, body_height))
+            surface.blit(body, (-surface.get_width()/2, self.head_height))
+
+            # name
+            font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 23)
+            last_bottom = 2/3 * surface.get_height()
+            for i in self.info['name']:
+                text = font.render(i, True, Color('white'), Color('black'))
+                text_rect = text.get_rect(midtop=(surface.get_width()/2, last_bottom))
+                surface.blit(text, text_rect)
+                last_bottom = text_rect.bottom
+
+        return surface
+
+    @staticmethod
+    def get_cropped_art(card_id):
+        pic = pygame.image.load(f'pics/{card_id}.jpg').convert()
+        pic = pygame.transform.smoothscale(pic.copy(), (421, 614))
+        art = pygame.Surface((323, 323))
+        art.blit(pic, (-48, -110))
+        return art
 
 
 # SCREENS
