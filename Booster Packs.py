@@ -187,9 +187,10 @@ class Card(pygame.sprite.Sprite):
 
 
 class BoosterPack(pygame.sprite.Group):
-    def __init__(self, n):
+    def __init__(self, n, init_mode='unpack'):
         super().__init__()
 
+        # properties
         self.n = n
         self.info = packs_info[n]
         self.width, self.height = 290, 530
@@ -214,15 +215,21 @@ class BoosterPack(pygame.sprite.Group):
         self.head.rect = self.head.image.get_rect(topleft=self.rect.topleft)
         self.body.rect = self.body.image.get_rect(topleft=self.head.rect.bottomleft)
 
-        # view
-        self.view = pygame.sprite.Sprite()
-        self.view.image = pygame.transform.smoothscale(surface.copy(), (self.width, self.height))
-        self.view.rect = self.view.image.get_rect()
+        # preview
+        self.preview = pygame.sprite.Sprite()
+        self.preview.image = pygame.transform.smoothscale(
+            surface.copy(), (round(self.width * 0.8), round(self.height * 0.8))
+        )
+        self.preview.rect = self.preview.image.get_rect()
 
         # miniature
         self.mini = pygame.sprite.Sprite()
+        self.mini.image = pygame.transform.smoothscale(
+            surface.copy(), (round(self.width * 0.2), round(self.height * 0.2))
+        )
+        self.mini.rect = self.mini.image.get_rect()
 
-        self.add(self.body, self.head)
+        self.set_mode(init_mode)
 
     def update(self):
         if self.openning:
@@ -230,7 +237,6 @@ class BoosterPack(pygame.sprite.Group):
         else:
             self.head.rect.topleft = self.rect.topleft
             self.body.rect.topleft = self.head.rect.bottomleft
-            self.view.rect.topleft = self.rect.topleft
 
         super().update()
 
@@ -246,12 +252,13 @@ class BoosterPack(pygame.sprite.Group):
             else:
                 game.screen.open_pack = True
         else:
-            self.head.image = pygame.transform.scale(self.head.image.copy(),
-                                                     (head_width, self.head.image.get_height()))
+            self.head.image = pygame.transform.scale(
+                self.head.image.copy(), (head_width, self.head.image.get_height())
+            )
             self.head.rect = self.head.image.get_rect(bottomright=self.body.rect.topright)
 
     def hovered(self, event_pos):
-        if self.head.rect.collidepoint(event_pos) or self.body.rect.collidepoint(event_pos):
+        if self.mini.rect.collidepoint(event_pos):
             return True
         return False
 
@@ -266,25 +273,34 @@ class BoosterPack(pygame.sprite.Group):
 
             # head
             head = pygame.Surface((self.width, self.head_height))
-            head.fill((43, 43, 43))
+            head.fill((192, 192, 192))
             surface.blit(head, (0, 0))
 
             # body
             body_height = self.height - self.head_height
             body = self.get_cropped_art(self.info['cover'])
             body = pygame.transform.smoothscale(body.copy(), (body_height, body_height))
-            surface.blit(body, (-surface.get_width()/2, self.head_height))
+            surface.blit(body, (-surface.get_width() / 2, self.head_height))
 
             # name
             font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 23)
-            last_bottom = 2/3 * surface.get_height()
+            last_bottom = 2 / 3 * surface.get_height()
             for i in self.info['name']:
                 text = font.render(i, True, Color('white'), Color('black'))
-                text_rect = text.get_rect(midtop=(surface.get_width()/2, last_bottom))
+                text_rect = text.get_rect(midtop=(surface.get_width() / 2, last_bottom))
                 surface.blit(text, text_rect)
                 last_bottom = text_rect.bottom
 
         return surface
+
+    def set_mode(self, mode):
+        self.empty()
+        if mode == 'unpack':
+            self.add(self.head, self.body)
+        elif mode == 'preview':
+            self.add(self.preview)
+        elif mode == 'mini':
+            self.add(self.mini)
 
     @staticmethod
     def get_cropped_art(card_id):
@@ -302,24 +318,33 @@ class SelectionScreen:
 
         # packs setup
         space = 10
-        last_right = space
+        last_right = 232 + 2 * space
         for i in packs_info:
-            pack = BoosterPack(i)
-            pack.rect.topleft = last_right + space, 35
-            pack.update()
+            pack = BoosterPack(i, init_mode='mini')
+            pack.mini.rect.topleft = last_right + space, 10
             self.packs.append(pack)
-            last_right = pack.body.rect.right
+            last_right = pack.mini.rect.right
+
+        preview = pygame.sprite.Sprite()
+        for pack in self.packs:
+            preview.image = pygame.Surface(pack.preview.image.get_size())
+            preview.rect = preview.image.get_rect(topleft=(space, space))
+            break
+        self.preview = pygame.sprite.GroupSingle(preview)
 
     def update(self):
         self.event_check()
         for pack in self.packs:
             pack.update()
+        self.preview.update()
 
     def draw(self, surface):
         surface.fill((0, 0, 0))
         surface.blit(game.bg, (0, 0))
         for pack in self.packs:
             pack.draw(surface)
+
+        self.preview.draw(surface)
 
     def event_check(self):
         for event in game.events:
@@ -331,12 +356,24 @@ class SelectionScreen:
                         if pack.hovered(event.pos):
                             game.screens['unpack'] = UnpackScreen(pack.n)
                             game.screen = game.screens['unpack']
-                elif event.button == 4:
-                    for pack in self.packs:
-                        pack.rect.x -= 80
-                elif event.button == 5:
-                    for pack in self.packs:
-                        pack.rect.x += 80
+
+        for pack in self.packs:
+            if pack.hovered(pygame.mouse.get_pos()):
+                self.preview.sprite.image = pack.preview.image
+
+    class Preview:
+        def __init__(self):
+
+            # bg
+            self.bg = 0
+            self.image = 0
+            self.text = 0
+
+        def update(self):
+            pass
+
+        def draw(self, surface):
+            pass
 
 
 class UnpackScreen:
@@ -407,6 +444,9 @@ class UnpackScreen:
                                     break
                                 self.card_moving = True
                                 break
+                        else:
+                            if event.button == 3:
+                                game.screen = game.screens['choose']
                     if self.detail_button.collidepoint(event.pos) and event.button == 2:
                         game.screens['detail'] = DetailScreen(self.get_top_card().id)
                         game.screen = game.screens['detail']
