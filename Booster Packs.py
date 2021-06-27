@@ -343,7 +343,10 @@ class SelectionScreen:
         self.preview_image = pygame.sprite.GroupSingle(preview)
 
         # preview description
-
+        preview_text_w = self.preview_bg.get_width()
+        preview_text_h = game.display_h - preview.image.get_height()
+        self.description = pygame.Surface((preview_text_w, preview_text_h), SRCALPHA)
+        self.description_rect = self.description.get_rect(top=preview.rect.bottom)
 
     def update(self):
         self.event_check()
@@ -356,39 +359,9 @@ class SelectionScreen:
         surface.blit(game.bg, (0, 0))
         for pack in self.packs:
             pack.draw(surface)
-
-        '''bg = pygame.Surface((218 + 2 * 10, game.display_h))
-        bg.set_alpha(128)
-        surface.blit(bg, (0, 0))
-
-        font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 13)
-        text = font.render('Short description', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, self.preview.sprite.rect.bottom + 10))
-        surface.blit(text, text_rect)
-        text = font.render('Release: 2021', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
-        surface.blit(text, text_rect)
-        text = font.render('Cards per pack: 3', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
-        surface.blit(text, text_rect)
-        text = font.render('Common: 20', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
-        surface.blit(text, text_rect)
-        text = font.render('Rare: 10 (1:3)', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
-        surface.blit(text, text_rect)
-        text = font.render('Super Rare: 10 (1:3)', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
-        surface.blit(text, text_rect)
-        text = font.render('Ultra Rare: 10 (1:3)', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
-        surface.blit(text, text_rect)
-        text = font.render('Total: 10 (1:3)', True, Color('white'))
-        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
-        surface.blit(text, text_rect)
-'''
         surface.blit(self.preview_bg, (0, 0))
         self.preview_image.draw(surface)
+        surface.blit(self.description, self.description_rect)
 
     def event_check(self):
         for event in game.events:
@@ -404,25 +377,25 @@ class SelectionScreen:
         for pack in self.packs:
             if pack.hovered(pygame.mouse.get_pos()):
                 self.preview_image.sprite.image = pack.preview.image
+                self.set_description(pack)
 
-    class Preview:
-        def __init__(self, pack_info, last_bottom):
-            self.bg = pygame.Surface((238, game.display_h))
-            self.image = 0
-            self.font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 12)
-            self.last_bottom = last_bottom
-
-            # description
-            rarity = [len(pack_info[i]) for i in ('Common', 'Rare', 'Super Rare', 'Ultra Rare')]
-            self.info = (f'{pack_info["description"]}',
-                         f'Release: {pack_info["release"]}',
-                         f'Cards per pack: {pack_info["#cards"]}',
-                         f'Common: {rarity[0]}',
-                         f'Rare: {rarity[1]}',
-                         f'Super Rare: {rarity[2]}',
-                         f'Ultra Rare: {rarity[3]}',
-                         f'Total: {sum(rarity)}')
-            self.description = pygame.Surface((self.bg.get_width(), game.display_h - last_bottom), SRCALPHA)
+    def set_description(self, pack, space=10):
+        self.description = pygame.Surface(self.description.get_size(), SRCALPHA)
+        font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 13)
+        last_bottom = space
+        rarity = [len(pack.info[i]) for i in ('Common', 'Rare', 'Super Rare', 'Ultra Rare')]
+        for i in (f'{pack.info["description"]}',
+                  f'Release: {pack.info["release"]}',
+                  f'Cards per pack: {pack.info["#cards"]}',
+                  f'Common: {rarity[0]}',
+                  f'Rare: {rarity[1]}',
+                  f'Super Rare: {rarity[2]}',
+                  f'Ultra Rare: {rarity[3]}',
+                  f'Total: {sum(rarity)}'):
+            text = font.render(i, True, (255, 255, 255))
+            text_rect = text.get_rect(topleft=(space, last_bottom))
+            self.description.blit(text, text_rect)
+            last_bottom = text_rect.bottom
 
 
 class UnpackScreen:
