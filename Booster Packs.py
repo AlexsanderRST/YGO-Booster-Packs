@@ -20,11 +20,12 @@ info_sample = {'name': (),
                '%UR': 12}
 
 packs_info = {0: {'name': ('Legend of', 'Blue Eyes White Dragon',),
+                  'description': 'OCG/TCG',
+                  'release': '2002',
                   'cover': '89631140',
                   '#cards': 9,
                   'head height': 20,
                   'rarity pos': 'middle',
-
                   'Common': ('76184692', '32274490', '89091579', '40374923', '90357090', '9159938', '77827521',
                              '90963488', '32864', '34460851', '36121917', '53293545', '53375573', '2863439',
                              '37313348', '75356564', '38142739', '96851799', '15401633', '57305373', '40826495',
@@ -54,6 +55,8 @@ packs_info = {0: {'name': ('Legend of', 'Blue Eyes White Dragon',),
                   '%UR': 12,
                   },
               1: {'name': ('Lightning Overdrive',),
+                  'description': 'OCG/TCG',
+                  'release': '2021',
                   'cover': '75402014',
                   '#cards': 9,
                   'head height': 22,
@@ -85,6 +88,8 @@ packs_info = {0: {'name': ('Legend of', 'Blue Eyes White Dragon',),
                   },
               2: {'name': ('Eternal Stream',),
                   'cover': '39272762',
+                  'description': 'Duel Links',
+                  'release': '2021',
                   '#cards': 3,
                   'head height': 86,
                   'rarity pos': 'end',
@@ -95,7 +100,6 @@ packs_info = {0: {'name': ('Legend of', 'Blue Eyes White Dragon',),
                   '%R': 1,
                   '%SR': 5,
                   '%UR': 12}
-
               }
 
 # SFXs
@@ -218,7 +222,7 @@ class BoosterPack(pygame.sprite.Group):
         # preview
         self.preview = pygame.sprite.Sprite()
         self.preview.image = pygame.transform.smoothscale(
-            surface.copy(), (round(self.width * 0.8), round(self.height * 0.8))
+            surface.copy(), (round(self.width * 0.75), round(self.height * 0.75))
         )
         self.preview.rect = self.preview.image.get_rect()
 
@@ -314,29 +318,38 @@ class BoosterPack(pygame.sprite.Group):
 # SCREENS
 class SelectionScreen:
     def __init__(self):
+        # setup
         self.packs = []
+        space = 10
 
         # packs setup
-        space = 10
-        last_right = 232 + 2 * space
+        last_right = 218 + 3 * space
         for i in packs_info:
             pack = BoosterPack(i, init_mode='mini')
             pack.mini.rect.topleft = last_right + space, 10
             self.packs.append(pack)
             last_right = pack.mini.rect.right
 
+        # preview bg
+        self.preview_bg = pygame.Surface((218 + 2 * space, game.display_h))
+        self.preview_bg.set_alpha(128)
+
+        # preview image
         preview = pygame.sprite.Sprite()
         for pack in self.packs:
             preview.image = pygame.Surface(pack.preview.image.get_size())
             preview.rect = preview.image.get_rect(topleft=(space, space))
             break
-        self.preview = pygame.sprite.GroupSingle(preview)
+        self.preview_image = pygame.sprite.GroupSingle(preview)
+
+        # preview description
+
 
     def update(self):
         self.event_check()
         for pack in self.packs:
             pack.update()
-        self.preview.update()
+        self.preview_image.update()
 
     def draw(self, surface):
         surface.fill((0, 0, 0))
@@ -344,7 +357,38 @@ class SelectionScreen:
         for pack in self.packs:
             pack.draw(surface)
 
-        self.preview.draw(surface)
+        '''bg = pygame.Surface((218 + 2 * 10, game.display_h))
+        bg.set_alpha(128)
+        surface.blit(bg, (0, 0))
+
+        font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 13)
+        text = font.render('Short description', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, self.preview.sprite.rect.bottom + 10))
+        surface.blit(text, text_rect)
+        text = font.render('Release: 2021', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
+        surface.blit(text, text_rect)
+        text = font.render('Cards per pack: 3', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
+        surface.blit(text, text_rect)
+        text = font.render('Common: 20', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
+        surface.blit(text, text_rect)
+        text = font.render('Rare: 10 (1:3)', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
+        surface.blit(text, text_rect)
+        text = font.render('Super Rare: 10 (1:3)', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
+        surface.blit(text, text_rect)
+        text = font.render('Ultra Rare: 10 (1:3)', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
+        surface.blit(text, text_rect)
+        text = font.render('Total: 10 (1:3)', True, Color('white'))
+        text_rect = text.get_rect(topleft=(10, text_rect.bottom + 2))
+        surface.blit(text, text_rect)
+'''
+        surface.blit(self.preview_bg, (0, 0))
+        self.preview_image.draw(surface)
 
     def event_check(self):
         for event in game.events:
@@ -359,21 +403,26 @@ class SelectionScreen:
 
         for pack in self.packs:
             if pack.hovered(pygame.mouse.get_pos()):
-                self.preview.sprite.image = pack.preview.image
+                self.preview_image.sprite.image = pack.preview.image
 
     class Preview:
-        def __init__(self):
-
-            # bg
-            self.bg = 0
+        def __init__(self, pack_info, last_bottom):
+            self.bg = pygame.Surface((238, game.display_h))
             self.image = 0
-            self.text = 0
+            self.font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 12)
+            self.last_bottom = last_bottom
 
-        def update(self):
-            pass
-
-        def draw(self, surface):
-            pass
+            # description
+            rarity = [len(pack_info[i]) for i in ('Common', 'Rare', 'Super Rare', 'Ultra Rare')]
+            self.info = (f'{pack_info["description"]}',
+                         f'Release: {pack_info["release"]}',
+                         f'Cards per pack: {pack_info["#cards"]}',
+                         f'Common: {rarity[0]}',
+                         f'Rare: {rarity[1]}',
+                         f'Super Rare: {rarity[2]}',
+                         f'Ultra Rare: {rarity[3]}',
+                         f'Total: {sum(rarity)}')
+            self.description = pygame.Surface((self.bg.get_width(), game.display_h - last_bottom), SRCALPHA)
 
 
 class UnpackScreen:
