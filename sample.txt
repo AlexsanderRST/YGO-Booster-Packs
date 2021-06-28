@@ -1,0 +1,17 @@
+!Booster Pack's name
+#Common (N):
+code 1
+...
+code n
+#Rare (R):
+code 1
+...
+code n
+#Super Rare (SR):
+code 1
+...
+code n
+#Ultra Rare (UR):
+code 1
+...
+code n
