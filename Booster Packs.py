@@ -397,13 +397,14 @@ class SelectionScreen:
         font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 13)
         last_bottom = space
         rarity = [len(pack.info[i]) for i in ('Common', 'Rare', 'Super Rare', 'Ultra Rare')]
+        probability = [pack.info[i] for i in ('%R', '%SR', '%UR')]
         for i in (f'{pack.info["description"]}',
                   f'Release: {pack.info["release"]}',
                   f'Cards per pack: {pack.info["#cards"]}',
                   f'Common: {rarity[0]}',
-                  f'Rare: {rarity[1]}',
-                  f'Super Rare: {rarity[2]}',
-                  f'Ultra Rare: {rarity[3]}',
+                  f'Rare: {rarity[1]} (1:{probability[0]})',
+                  f'Super Rare: {rarity[2]} (1:{probability[1]})',
+                  f'Ultra Rare: {rarity[3]} (1:{probability[2]})',
                   f'Total: {sum(rarity)}'):
             text = font.render(i, True, (255, 255, 255))
             text_rect = text.get_rect(topleft=(space, last_bottom))
@@ -483,6 +484,7 @@ class UnpackScreen:
                             if event.button == 1:
                                 game.screens['unpack'] = UnpackScreen(self.pack.n)
                                 game.screen = game.screens['unpack']
+                                return
                             elif event.button == 3:
                                 game.screen = game.screens['choose']
                     if self.detail_button.collidepoint(event.pos) and event.button == 2:
@@ -490,7 +492,7 @@ class UnpackScreen:
                         game.screen = game.screens['detail']
 
                 else:
-                    if event.button == 1 or event.button == 3:
+                    if event.button in (1, 3):
                         if not self.pack.openning:
                             self.pack.openning = True
                             sfx_open_pack.play()
@@ -571,7 +573,8 @@ class DetailScreen:
             if event.type == QUIT:
                 game.loop = False
             elif event.type == MOUSEBUTTONDOWN:
-                self.quit()
+                if event.button in (1, 3):
+                    self.quit()
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     self.quit()
@@ -587,7 +590,12 @@ class Game:
         # display
         self.display_w, self.display_h = 1024, 600
         self.display = pygame.display.set_mode((self.display_w, self.display_h))
-        pygame.display.set_caption('Booster Packs')
+        pygame.display.set_caption('Booster Packs (1.0b)')
+
+        # icon
+        icon = pygame.image.load('textures/AppIcon.png').convert_alpha()
+        icon = pygame.transform.smoothscale(icon.copy(), (32, 32))
+        pygame.display.set_icon(icon)
 
         # bg
         self.bg = pygame.transform.smoothscale(
