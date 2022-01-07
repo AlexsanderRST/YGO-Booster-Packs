@@ -1,5 +1,10 @@
 # EDOPro Booster Packs
 
+![Program version](https://img.shields.io/badge/Version-1.0.0-blueviolet?style=flat-square)
+![Python version](https://img.shields.io/badge/Python-3.10-blue?style=flat-square)
+![Pygame version](https://img.shields.io/badge/Pygame-2.1-green?style=flat-square)
+[![Donate](https://img.shields.io/badge/Donate-Paypal-blue?style=flat-square)](https://www.paypal.com/donate?hosted_button_id=L53Z8HUNP7X66)
+
 This program is an extension of EDOPro (requiring it to run) that simulates the Yu-Gi-Oh!'s booster packs opening.
 After close the program, you can check the drops into *Booster Packs* deck in your game.
 
