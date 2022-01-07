@@ -29,7 +29,8 @@ Secret Rare and other rarities were considered Ultra Rares.
 
 ## Controls 🕹️:
 #### Selection Screen:
-- LMB to select a pack.
+- LMB to select a pack;
+- Mouse Wheels to scroll through pages.
 #### Unpack Screen:
 - If pack not open:
     - **LMB** or **RMB** to open.
@@ -54,13 +55,13 @@ Secret Rare and other rarities were considered Ultra Rares.
   
 ## Gallery 🖼️
 ### Selection Screen:
-![](https://i.ibb.co/VjpbB3B/print-1.png)
+![](https://i.ibb.co/SNyWX6d/epbp-1000-1.png)
 ### Unpack Screen:
 ![](https://i.ibb.co/qC5w9Gy/print-3.png)
 ![](https://i.ibb.co/4gc8fdp/print-5.png)
-![](https://i.ibb.co/ZcLK7Gd/print-4.png)
+![](https://i.ibb.co/FqzkxfS/epbp-1000-2.png)
 ### Detail Screen:
 ![](https://i.ibb.co/NWjrKdz/print6.png)
 ### Without texture:
 ![](https://i.ibb.co/qYJ2x5t/print7.png)
-![](https://i.ibb.co/Ms1Gdwg/print8.png)
+![](https://i.ibb.co/0V92znQ/epbp-1000-3.png)
