@@ -63,16 +63,19 @@ class BoosterPack(pygame.sprite.Group):
         self.head = pygame.sprite.Sprite()
         self.head.image = pygame.Surface((self.width, self.head_height), SRCALPHA)
         self.head.image.blit(surface, (0, 0))
+        self.head.rect = self.head.image.get_rect()
 
         # body
         self.body = pygame.sprite.Sprite()
         self.body.image = pygame.Surface((self.width, self.height - self.head_height), SRCALPHA)
         self.body.image.blit(surface, (0, -self.head_height))
+        self.body.rect = self.body.image.get_rect()
 
         # positioning
-        self.rect = pygame.Rect(367, 35, 1, 1)
-        self.head.rect = self.head.image.get_rect(topleft=self.rect.topleft)
-        self.body.rect = self.body.image.get_rect(topleft=self.head.rect.bottomleft)
+        self.rect = pygame.Rect(0, 0, self.body.rect.w, self.body.rect.h + self.head.rect.h)
+        self.rect.center = display_w / 2, display_h / 2
+        self.head.rect.topleft = self.rect.topleft
+        self.body.rect.topleft = self.head.rect.bottomleft
         self.body_pos = pygame.math.Vector2(self.body.rect.center)
 
         # preview
@@ -461,7 +464,6 @@ class DetailScreen:
 class SelectionScreen:
     def __init__(self):
         # setup
-        # self.packs = self.Packs()
         self.spaccing = 7
         self.preview_bg_w = round(0.213 * display_w) + 2 * self.spaccing
 
@@ -616,33 +618,23 @@ class UnpackScreen:
     def __init__(self, current_pack):
         pack = packs_info[current_pack]
         self.pack = BoosterPack(current_pack)
+        # self.pack.rect.center = display_w / 2 , display_h / 2
         self.cards = pygame.sprite.LayeredUpdates()
         self.generate_pack(pack)
         self.card_moving = False
         self.open_pack = False
+        self.rarity_viewed = False
 
         # counter
         self.counter = 1
-        for card in self.cards:
-            self.card_midbottom = card.rect.midbottom
-            break
+        self.card_midbottom = self.cards.sprites()[0].rect.midbottom
 
-        self.font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 20)
+        # font
+        self.font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 18)
         self.font.set_bold(True)
 
+        # detail button
         self.detail_button = pygame.Rect(376, 320, 271, 180)
-
-    def draw(self, surface):
-        surface.fill('black')
-        surface.blit(game.bg, (0, 0))
-        self.cards.draw(surface)
-
-        # counter
-        counter = self.font.render(f'({self.counter}/{len(self.cards)})', True, Color('white'))
-        counter_rect = counter.get_rect(midtop=(self.card_midbottom[0] + 13, self.card_midbottom[1]))
-        surface.blit(counter, counter_rect)
-
-        self.pack.draw(surface)
 
     def event_check(self):
         for event in game.events:
@@ -656,19 +648,9 @@ class UnpackScreen:
                         if card.rect.collidepoint(event.pos):
                             if not self.card_moving:
                                 if event.button == 1:
-                                    chosen_card = self.get_top_card()
-                                    chosen_card.anim = chosen_card.move_to_back
-                                    sfx_next_card.play()
-                                    self.counter += 1
-                                    if self.counter > len(self.cards):
-                                        self.counter = 1
+                                    self.switch_next_card()
                                 elif event.button == 3:
-                                    chosen_card = self.get_bottom_card()
-                                    chosen_card.anim = chosen_card.move_to_front
-                                    sfx_next_card.play()
-                                    self.counter -= 1
-                                    if self.counter < 1:
-                                        self.counter = len(self.cards)
+                                    self.switch_previous_card()
                                 else:
                                     break
                                 self.card_moving = True
@@ -683,7 +665,6 @@ class UnpackScreen:
                     if self.detail_button.collidepoint(event.pos) and event.button == 2:
                         game.screens['detail'] = DetailScreen(self.get_top_card().id)
                         game.screen = game.screens['detail']
-
                 else:
                     if event.button in (1, 3):
                         if not self.pack.openning:
@@ -723,15 +704,12 @@ class UnpackScreen:
         # Put cards into pack:
         for index, card_id in enumerate(cards):
             card = Card(card_id, info)
-            card.rect.center = 512, 300  # Screen center
+            card.rect.center = display_w / 2, display_h / 2
             self.cards.add(card)
             self.cards.change_layer(card, index)
 
         # purchase cards
         game.purchase += cards
-
-    def get_top_card(self):
-        return self.cards.get_top_sprite()
 
     def get_bottom_card(self):
         bottom_card, bottom_layer = None, 5
@@ -740,6 +718,55 @@ class UnpackScreen:
                 bottom_layer = card.layer
                 bottom_card = card
         return bottom_card
+
+    def get_next_card_rarity(self, card):
+        cards = self.cards.sprites()
+        return cards[cards.index(card) - 1].rarity
+
+    def get_switch_card_sound(self, rarity=''):
+        if self.rarity_viewed:
+            return sfx_next_card
+        match rarity:
+            case 'Super Rare':
+                self.rarity_viewed = True
+                return sfx_next_srcard
+            case 'Ultra Rare':
+                self.rarity_viewed = True
+                return sfx_next_urcard
+            case _:
+                return sfx_next_card
+
+    def get_top_card(self):
+        return self.cards.get_top_sprite()
+
+    def switch_next_card(self):
+        card = self.get_top_card()
+        self.get_next_card_rarity(card)
+        card.anim = card.move_to_back
+        self.get_switch_card_sound(self.get_next_card_rarity(card)).play()
+        self.counter += 1
+        if self.counter > len(self.cards):
+            self.counter = 1
+
+    def switch_previous_card(self):
+        card = self.get_bottom_card()
+        card.anim = card.move_to_front
+        sfx_next_card.play()
+        self.counter -= 1
+        if self.counter < 1:
+            self.counter = len(self.cards)
+
+    def draw(self, surface):
+        surface.fill('black')
+        surface.blit(game.bg, (0, 0))
+        self.cards.draw(surface)
+
+        # counter
+        counter = self.font.render(f'({self.counter}/{len(self.cards)})', True, Color('white'))
+        counter_rect = counter.get_rect(midtop=(self.card_midbottom[0] + 13, self.card_midbottom[1]))
+        surface.blit(counter, counter_rect)
+
+        self.pack.draw(surface)
 
     def update(self):
         self.event_check()
@@ -754,7 +781,7 @@ class Game:
     def __init__(self):
         # display
         self.display = pygame.display.set_mode((display_w, display_h))
-        pygame.display.set_caption(f'Booster Packs [{version}]')
+        pygame.display.set_caption(f'Booster Packs {version}')
 
         # icon
         icon = pygame.image.load('textures/AppIcon.png').convert_alpha()
@@ -763,8 +790,7 @@ class Game:
 
         # bg
         self.bg = pygame.transform.smoothscale(
-            pygame.image.load('textures/bg_deck.png').convert(),
-            (display_w, display_h))
+            pygame.image.load('textures/bg_deck.png').convert(), (display_w, display_h))
         self.bg.set_alpha(128)
 
         # properties
@@ -772,6 +798,7 @@ class Game:
         self.loop = True
         self.events = pygame.event.get()
 
+        # screens
         self.screens = {}
         self.screen = None
 
@@ -808,9 +835,9 @@ class Game:
 if __name__ == '__main__':
 
     # settings
-    version = '1.0.0'
-    display_w = 1024
-    display_h = 600
+    version = '1.1.0r1'
+    display_w = 1152
+    display_h = 648
     hovered = pygame.sprite.GroupSingle()
 
     # Game
@@ -822,5 +849,11 @@ if __name__ == '__main__':
     # SFXs
     sfx_open_pack = pygame.mixer.Sound('sound/attack.wav')
     sfx_next_card = pygame.mixer.Sound('sound/draw.wav')
+    sfx_next_srcard = pygame.mixer.Sound('sound/activate.wav')
+    sfx_next_urcard = pygame.mixer.Sound('sound/summon.wav')
+
+    # volumes
+    sfx_open_pack.set_volume(0.2)
+    sfx_next_srcard.set_volume(0.4)
 
     game.run()
