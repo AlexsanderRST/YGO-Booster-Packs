@@ -34,15 +34,8 @@ def cursor_by_context():
         pygame.mouse.set_cursor(SYSTEM_CURSOR_ARROW)
 
 
-def draw_gradient_pattern(surface: pygame.Surface,
-                          rows: int,
-                          cols: int,
-                          spaccing=3,
-                          padx=5,
-                          pady=5,
-                          color_0=(180, 180, 180),
-                          color_f=(150, 150, 150),
-                          vertical=False):
+def draw_gradient_pattern(surface: pygame.Surface, rows: int, cols: int, spaccing=3, padx=5, pady=5,
+                          color_0=(180, 180, 180), color_f=(150, 150, 150), vertical=False):
     rect_width = (surface.get_width() - padx * 2 - spaccing * (cols - 1)) / cols
     rect_height = (surface.get_height() - pady * 2 - spaccing * (rows - 1)) / rows
     color_r_speed = round((color_f[0] - color_0[0]) / rows) if vertical else round((color_f[0] - color_0[0]) / cols)
@@ -158,8 +151,22 @@ class BoosterPack(pygame.sprite.Group):
             body_height = self.height - self.head_height * 2
             body = self.get_cropped_art(self.info['cover'])
             body = pygame.transform.smoothscale(body.copy(), (body_height, body_height))
+
+            # body shadow
+            shadow = pygame.Surface((self.width, round(self.head_height / 5)))
+            shadow.set_alpha(120)
+            body.blit(shadow, (shadow.get_width() / 2, 0))
+            body.blit(shadow, (shadow.get_width() / 2, body_height - shadow.get_height()))
+
+            # body reflex
+            reflex = pygame.image.load('textures/mask.png').convert_alpha()
+            reflex = pygame.transform.scale(reflex, (self.height, self.height))
+            reflex = pygame.transform.flip(reflex, True, False)
+            reflex.set_alpha(180)
+            body.blit(reflex, (30, 0))
+
             surface.blit(body, (-surface.get_width() / 2, self.head_height))
-            
+
             # name
             font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 25)
             last_bottom = 2 / 3 * surface.get_height()
@@ -875,7 +882,7 @@ class Game:
 if __name__ == '__main__':
 
     # settings
-    version = '1.1.0r2'
+    version = '1.1.0r3'
     display_w = 1152
     display_h = 648
     hovered = pygame.sprite.GroupSingle()
