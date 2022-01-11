@@ -34,6 +34,40 @@ def cursor_by_context():
         pygame.mouse.set_cursor(SYSTEM_CURSOR_ARROW)
 
 
+def draw_gradient_pattern(surface: pygame.Surface,
+                          rows: int,
+                          cols: int,
+                          spaccing=3,
+                          padx=5,
+                          pady=5,
+                          color_0=(180, 180, 180),
+                          color_f=(150, 150, 150),
+                          vertical=False):
+    rect_width = (surface.get_width() - padx * 2 - spaccing * (cols - 1)) / cols
+    rect_height = (surface.get_height() - pady * 2 - spaccing * (rows - 1)) / rows
+    color_r_speed = round((color_f[0] - color_0[0]) / rows) if vertical else round((color_f[0] - color_0[0]) / cols)
+    color_g_speed = round((color_f[1] - color_0[1]) / rows) if vertical else round((color_f[1] - color_0[1]) / cols)
+    color_b_speed = round((color_f[2] - color_0[2]) / rows) if vertical else round((color_f[2] - color_0[2]) / cols)
+    color = list(color_0)
+    for row in range(rows):
+        for col in range(cols):
+            left = (rect_width + spaccing) * col + padx
+            top = (rect_height + spaccing) * row + pady
+            pygame.draw.rect(surface, color, [left, top, rect_width, rect_height])
+            color = get_next_color(color, color_r_speed, color_g_speed, color_b_speed) if not vertical else color
+        color = get_next_color(color, color_r_speed, color_g_speed, color_b_speed) if vertical else color_0
+
+
+def get_next_color(color, r_speed, g_speed, b_speed):
+    next_color = [color[0] + r_speed, color[1] + g_speed, color[2] + b_speed]
+    for i, ch in enumerate(next_color):
+        if ch < 0:
+            next_color[i] = 0
+        elif ch > 255:
+            next_color[i] = 255
+    return next_color
+
+
 def download_packs_info():
     url = 'https://raw.githubusercontent.com/AlexsanderRST/EDOPro-Booster-Packs/main/BoosterPacks.json'
     try:
@@ -48,7 +82,6 @@ def download_packs_info():
 class BoosterPack(pygame.sprite.Group):
     def __init__(self, code, init_mode='unpack'):
         super().__init__()
-
         # properties
         self.code = code
         self.info = packs_info[code]
@@ -93,14 +126,6 @@ class BoosterPack(pygame.sprite.Group):
 
         self.set_mode(init_mode)
 
-    def draw(self, surface):
-        super().draw(surface)
-
-    def hovered(self, event_pos):
-        if self.mini.rect.collidepoint(event_pos):
-            return True
-        return False
-
     @staticmethod
     def get_cropped_art(card_id):
         pic = pygame.image.load(f'pics/{card_id}.jpg').convert()
@@ -116,20 +141,27 @@ class BoosterPack(pygame.sprite.Group):
             # presets
             self.head_height = 40
             surface = pygame.Surface((self.width, self.height))
+            hole_r = 14
 
-            # head
+            # head and bottom
             head = pygame.Surface((self.width, self.head_height))
             head.fill((192, 192, 192))
+            draw_gradient_pattern(head, 4, 30)
+            bottom = head.copy()
+            pygame.draw.ellipse(
+                head, 'pink', [head.get_width() / 2 - hole_r, head.get_height() / 2 - hole_r, hole_r * 2, hole_r * 2])
+            head.set_colorkey('pink')
             surface.blit(head, (0, 0))
+            surface.blit(bottom, (0, self.height - bottom.get_height()))
 
             # body
-            body_height = self.height - self.head_height
+            body_height = self.height - self.head_height * 2
             body = self.get_cropped_art(self.info['cover'])
             body = pygame.transform.smoothscale(body.copy(), (body_height, body_height))
             surface.blit(body, (-surface.get_width() / 2, self.head_height))
-
+            
             # name
-            font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 23)
+            font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 25)
             last_bottom = 2 / 3 * surface.get_height()
             for i in self.info['name']:
                 text = font.render(i, True, Color('white'), Color('black'))
@@ -138,6 +170,11 @@ class BoosterPack(pygame.sprite.Group):
                 last_bottom = text_rect.bottom
 
         return surface
+
+    def hovered(self, event_pos):
+        if self.mini.rect.collidepoint(event_pos):
+            return True
+        return False
 
     def set_mode(self, mode):
         self.empty()
@@ -161,6 +198,9 @@ class BoosterPack(pygame.sprite.Group):
             self.head.image = pygame.transform.scale(
                 self.head.image.copy(), (head_width, self.head.image.get_height()))
             self.head.rect = self.head.image.get_rect(bottomright=self.body.rect.topright)
+
+    def draw(self, surface):
+        super().draw(surface)
 
     def update(self):
         self.body_pos = pygame.math.Vector2(self.body.rect.center)
@@ -835,7 +875,7 @@ class Game:
 if __name__ == '__main__':
 
     # settings
-    version = '1.1.0r1'
+    version = '1.1.0r2'
     display_w = 1152
     display_h = 648
     hovered = pygame.sprite.GroupSingle()
