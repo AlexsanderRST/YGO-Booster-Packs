@@ -665,7 +665,6 @@ class UnpackScreen:
     def __init__(self, current_pack):
         pack = packs_info[current_pack]
         self.pack = BoosterPack(current_pack)
-        # self.pack.rect.center = display_w / 2 , display_h / 2
         self.cards = pygame.sprite.LayeredUpdates()
         self.generate_pack(pack)
         self.card_moving = False
@@ -690,33 +689,27 @@ class UnpackScreen:
 
             # Mouse input
             elif event.type == MOUSEBUTTONDOWN:
-                if self.open_pack:
-                    for card in self.cards:
-                        if card.rect.collidepoint(event.pos):
-                            if not self.card_moving:
-                                if event.button == 1:
-                                    self.switch_next_card()
-                                elif event.button == 3:
-                                    self.switch_previous_card()
-                                else:
-                                    break
-                                self.card_moving = True
-                                break
-                        else:
-                            if event.button == 1:
-                                game.screens['unpack'] = UnpackScreen(self.pack.code)
-                                game.screen = game.screens['unpack']
-                                return
-                            elif event.button == 3:
-                                game.screen = game.screens['choose']
-                    if self.detail_button.collidepoint(event.pos) and event.button == 2:
-                        game.screens['detail'] = DetailScreen(self.get_top_card().id)
-                        game.screen = game.screens['detail']
+                if not self.open_pack:
+                    if event.button in (1, 3) and not self.pack.openning:
+                        self.pack.openning = True
+                        sfx_open_pack.play()
                 else:
-                    if event.button in (1, 3):
-                        if not self.pack.openning:
-                            self.pack.openning = True
-                            sfx_open_pack.play()
+                    card = self.cards.sprites()[0]
+                    if event.button == 1:
+                        if card.rect.collidepoint(event.pos):
+                            self.switch_next_card()
+                        else:
+                            game.screens['unpack'] = UnpackScreen(self.pack.code)
+                            game.screen = game.screens['unpack']
+                    elif event.button == 2:
+                        if self.detail_button.collidepoint(event.pos):
+                            game.screens['detail'] = DetailScreen(self.get_top_card().id)
+                            game.screen = game.screens['detail']
+                    elif event.button == 3:
+                        if card.rect.collidepoint(event.pos):
+                            self.switch_previous_card()
+                        else:
+                            game.screen = game.screens['choose']
 
             # keyboard input
             elif event.type == KEYDOWN:
@@ -787,21 +780,25 @@ class UnpackScreen:
         return self.cards.get_top_sprite()
 
     def switch_next_card(self):
-        card = self.get_top_card()
-        self.get_next_card_rarity(card)
-        card.anim = card.move_to_back
-        self.get_switch_card_sound(self.get_next_card_rarity(card)).play()
-        self.counter += 1
-        if self.counter > len(self.cards):
-            self.counter = 1
+        if not self.card_moving:
+            card = self.get_top_card()
+            self.get_next_card_rarity(card)
+            card.anim = card.move_to_back
+            self.get_switch_card_sound(self.get_next_card_rarity(card)).play()
+            self.counter += 1
+            if self.counter > len(self.cards):
+                self.counter = 1
+            self.card_moving = True
 
     def switch_previous_card(self):
-        card = self.get_bottom_card()
-        card.anim = card.move_to_front
-        sfx_next_card.play()
-        self.counter -= 1
-        if self.counter < 1:
-            self.counter = len(self.cards)
+        if not self.card_moving:
+            card = self.get_bottom_card()
+            card.anim = card.move_to_front
+            sfx_next_card.play()
+            self.counter -= 1
+            if self.counter < 1:
+                self.counter = len(self.cards)
+            self.card_moving = True
 
     def draw(self, surface):
         surface.fill('black')
@@ -882,7 +879,7 @@ class Game:
 if __name__ == '__main__':
 
     # settings
-    version = '1.1.0r3'
+    version = '1.1.0r4'
     display_w = 1152
     display_h = 648
     hovered = pygame.sprite.GroupSingle()
