@@ -25,8 +25,7 @@ Secret Rare and other rarities were considered Ultra Rares.
 - Download the exe or py (python 3 and pygame 2 required);
 - Drop into your EDOPro folder;
 - Double click it.
-- [Download textures](https://mega.nz/folder/HNlkVLKa#_DIZPXg8ZFKMp5--m-lT3Q) and drop *pics* folder into your game (Optional);
-- For HD cards, you can use my [EDOPro HD Pics Downloader](http://tinyurl.com/yufb2ucj) (Optional).
+- [Download textures](https://mega.nz/folder/HNlkVLKa#_DIZPXg8ZFKMp5--m-lT3Q) and drop *pics* folder into your game (Optional).
 
 ## Controls 🕹️:
 #### Selection Screen:
