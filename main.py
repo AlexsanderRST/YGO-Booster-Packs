@@ -2,6 +2,7 @@
 Created by Alexsander Rosante 2023
 Github: https://github.com/AlexsanderRST
 """
+import string
 
 # from urllib import request, error
 from pygame.locals import *
@@ -183,9 +184,6 @@ class BoosterPack(pygame.sprite.Group):
                 self.head.image.copy(), (head_width, self.head.image.get_height()))
             self.head.rect = self.head.image.get_rect(bottomright=self.body.rect.topright)
 
-    def draw(self, surface):
-        super().draw(surface)
-
     def update(self):
         self.body_pos = pygame.math.Vector2(self.body.rect.center)
         if self.openning:
@@ -231,8 +229,7 @@ class ButtonText(pygame.sprite.Sprite):
 class ButtonIcon(pygame.sprite.Sprite):
     def __init__(self,
                  size: tuple[float, float],
-                 icon_on='button_back_on',
-                 icon_off='button_back_off',
+                 icon: str,
                  on_activation=lambda: None):
         super().__init__()
 
@@ -240,8 +237,8 @@ class ButtonIcon(pygame.sprite.Sprite):
         self.on_activation = on_activation
 
         # surfs
-        self.surf_on = pygame.image.load(f'textures/{icon_on}.png').convert_alpha()
-        self.surf_off = pygame.image.load(f'textures/{icon_off}.png').convert_alpha()
+        self.surf_on = pygame.image.load(f'textures/btn_{icon}_on.png').convert_alpha()
+        self.surf_off = pygame.image.load(f'textures/btn_{icon}_off.png').convert_alpha()
 
         # resize surfs
         self.surf_on = pygame.transform.smoothscale(self.surf_on.copy(), size)
@@ -279,20 +276,24 @@ class ButtonToggle(pygame.sprite.Sprite):
                  toggled_border_color='#80ff94',
                  start_activated=False,
                  deactivate_on_click=False,
-                 on_activation=lambda _: None,
+                 on_activation=lambda: None,
                  on_activation_args=(),
+                 on_deactivation=lambda: None,
+                 on_deactivation_args=()
                  ):
         super().__init__()
 
         # properties
-        self.size = width, height
+        self.activated = False
         self.border_size = border_size
+        self.deactivate_on_click = deactivate_on_click
+        self.idle_border_color = idle_border_color
         self.on_activation = on_activation
         self.on_activation_args = on_activation_args
-        self.activated = False
-        self.idle_border_color = idle_border_color
+        self.on_deactivation = on_deactivation
+        self.on_deactivation_args = on_deactivation_args
+        self.size = width, height
         self.toggled_border_color = toggled_border_color
-        self.deactivate_on_click = deactivate_on_click
 
         # image and rect
         self.image = pygame.Surface(self.size, SRCALPHA)
@@ -331,8 +332,9 @@ class ButtonToggle(pygame.sprite.Sprite):
         self.redraw(self.toggled_surf, self.toggled_border_color)
 
     def deactivate(self):
-        self.redraw(self.idle_surf, self.idle_border_color)
+        self.on_deactivation(*self.on_deactivation_args)
         self.activated = False
+        self.redraw(self.idle_surf, self.idle_border_color)
 
     def redraw(self, surface: pygame.Surface, border_color: str):
         self.image = pygame.Surface(self.size, SRCALPHA)
@@ -653,15 +655,15 @@ class RarityLabel(pygame.sprite.Sprite):
 
 class RarityFilters(pygame.sprite.Group):
     def __init__(self,
-                 pack_name: str,
+                 pack_id: str,
                  container_w: float,
                  container_left: float,
                  custom_filter=lambda: None):
         super().__init__()
 
         # properties
-        pack_info = packs_info[pack_name]
-        self.tool = PacksTool(packs_info[pack_name])
+        pack_info = packs_info[pack_id]
+        self.tool = PacksTool(packs_info[pack_id])
 
         # define filters
         filters = [['all', '']]
@@ -824,13 +826,13 @@ class TextBox(pygame.sprite.Sprite):
     def __init__(self, text: str, width=0):
         super().__init__()
         padx, pady = 10, 10
-        font = pygame.font.Font('fonts/Roboto-BoldItalic.ttf', 25)
+        font = pygame.font.Font('fonts/Roboto-MediumItalic.ttf', 25)
         text_surf = font.render(text, True, 'white', 'black')
         width = text_surf.get_width() + 2 * padx if not width else width
         self.image = pygame.Surface((width, text_surf.get_height() + 2 * pady))
         self.image.fill('black')
         self.rect = self.image.get_rect()
-        pygame.draw.rect(self.image, 'white', [0, 0, *self.rect.size], 1)
+        pygame.draw.rect(self.image, 'darkgray', [-1, 0, self.rect.w + 2, self.rect.h], 1)
         self.image.blit(text_surf, (padx, pady))
 
 
@@ -875,7 +877,7 @@ class ConfigScreen:
         self.buttons = pygame.sprite.Group()
 
         # back button
-        btn_back = ButtonIcon(2 * [display_w * .04], on_activation=self.quit)
+        btn_back = ButtonIcon(2 * [display_w * .04], 'back', self.quit)
         btn_back.rect.topleft = 2 * [display_h * .025]
         self.buttons.add(btn_back)
 
@@ -894,7 +896,7 @@ class ConfigScreen:
 
 
 class PackContentScreen:
-    def __init__(self, pack_name: str):
+    def __init__(self, pack_id: str):
 
         # settings
         game.hovered.empty()
@@ -905,7 +907,7 @@ class PackContentScreen:
         self.col = 8
         self.offset_x = display_w * .05
         self.offset_y = display_h * .15
-        self.pack_info = packs_info[pack_name]
+        self.pack_info = packs_info[pack_id]
         self.tool = PacksTool(self.pack_info)
 
         # cards
@@ -920,7 +922,7 @@ class PackContentScreen:
         self.set_container()
 
         # rarity filter buttons
-        self.filter_buttons = RarityFilters(pack_name, self.container_w, self.container.left, self.filter)
+        self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.left, self.filter)
 
         # slide bar
         self.slide_bar = None
@@ -928,7 +930,7 @@ class PackContentScreen:
 
         # back buton
         filter_button_rect = self.filter_buttons.sprites()[0].rect
-        button_back = ButtonIcon(2 * [filter_button_rect.h * .8], on_activation=self.quit)
+        button_back = ButtonIcon(2 * [filter_button_rect.h * .8], 'back', self.quit)
         button_back.rect.midleft = display_w * 0.005, filter_button_rect.centery
         self.button_back = pygame.sprite.GroupSingle(button_back)
 
@@ -1029,69 +1031,138 @@ class PackFilterScreen:
 
         # properties
         self.buttons = pygame.sprite.Group()
+        self.buttons_filters = pygame.sprite.Group()
         self.cols = 5
         self.container_w = display_w * .8
+        self.filters = []
         self.letters = ascii_uppercase
+        self.offset_y = display_h * .05
         self.releases = []
         self.spacing = 10
         self.tags = []
         self.text_boxes = pygame.sprite.Group()
 
         # back button
-        btn_back = ButtonIcon(2 * [display_w * .04], on_activation=self.quit)
+        btn_back = ButtonIcon(2 * [display_w * .04], 'back', self.quit)
         btn_back.rect.topleft = 2 * [display_h * .025]
-        self.buttons.add(btn_back)
+
+        # clean button
+        btn_clean = ButtonIcon(btn_back.rect.size, 'clean', self.clean_filters)
+        btn_clean.rect.topleft = btn_back.rect.left, btn_back.rect.bottom + display_h * .025
+
+        self.buttons.add(btn_back, btn_clean)
 
         # get data from pack
-        for pack_name in packs_info:
-            pack = packs_info[pack_name]
+        for pack_id in packs_info:
+            pack = packs_info[pack_id]
             self.tags.append(pack["description"])
             self.releases.append(int(pack["release"]))
         self.tags = list(set(self.tags))[::-1]
         self.releases = sorted(list(set(self.releases)))
 
         # setup tags and buttons
-        btn, last_right, last_bottom = None, display_w * .1, display_h * .05
+        btn, last_right, last_bottom = None, display_w * .1, self.offset_y
         for f in [['Tags', self.tags], ['Release', self.releases], ['Name', self.letters]]:
+
+            # text box
             tbox = TextBox(f[0], display_w * .8)
             tbox.rect.topleft = last_right, last_bottom
             self.text_boxes.add(tbox)
+            tbox.yi = tbox.rect.y
             last_bottom = tbox.rect.bottom + self.spacing * 2
+
+            # filter buttons
             btn_w = round((tbox.rect.w - (self.cols - 1) * self.spacing) / self.cols)
             rows = math.ceil(len(f[1]) / self.cols)
             for i in range(rows):
                 for j in range(self.cols):
-                    if len(f[1]) > (i * self.cols + j):
+                    idx = i * self.cols + j
+                    if len(f[1]) > idx:
                         btn = ButtonToggle(
                             width=btn_w,
                             height=tbox.rect.h,
-                            text=str(f[1][i * self.cols + j]),
-                            text_size=25)
+                            text=str(f[1][idx]),
+                            text_size=25,
+                            on_activation=self.add_filter,
+                            on_activation_args=[str(f[1][idx])],
+                            on_deactivation=self.remove_filter,
+                            on_deactivation_args=[str(f[1][idx])],
+                            deactivate_on_click=True,
+                        )
                         btn.rect.topleft = last_right, last_bottom
                         self.buttons.add(btn)
+                        self.buttons_filters.add(btn)
                         last_right = btn.rect.right + self.spacing
+                        btn.yi = btn.rect.y
                 last_right = tbox.rect.left
                 last_bottom = btn.rect.bottom + self.spacing
             last_bottom = btn.rect.bottom + self.spacing * 3
+
+        # container
+        container_size = tbox.rect.w, btn.rect.bottom - self.text_boxes.sprites()[0].rect.top
+        self.container = pygame.Rect(*self.text_boxes.sprites()[0].rect.topleft, *container_size)
+        floor = round(display_h - self.offset_y)
+        self.container_floor = floor if self.container.bottom >= floor else self.container.bottom
+
+        # slide bar
+        distance = self.container.bottom - self.container_floor
+        slider_r = 1 - distance / self.container.h
+        slider_r = slider_r if slider_r < 1 else 1.
+        self.slide_bar = SlideBar(slider_r)
+
+    @staticmethod
+    def add_filter(fl: str):
+        screen = game.screens['choose']
+        screen.filters.append(fl)
+        screen.set_filters()
+
+    def clean_filters(self):
+        game.screens['choose'].filters.clear()
+        for btn in self.buttons_filters.sprites():
+            btn.deactivate()
 
     def draw(self, surface: pygame.Surface):
         surface.fill('black')
         surface.blit(game.bg, (0, 0))
         self.buttons.draw(surface)
         self.text_boxes.draw(surface)
+        self.slide_bar.draw(surface)
 
     @staticmethod
     def quit():
         game.hovered.empty()
         game.screen = game.screens['choose']
 
+    @staticmethod
+    def remove_filter(fl: str):
+        screen = game.screens['choose']
+        if fl in screen.filters:
+            screen.filters.remove(fl)
+        screen.set_filters()
+
+    def update_container_pos(self):
+        p1 = self.slide_bar.bg_rect.bottom
+        p2 = self.slide_bar.slider.sprite.rect.bottom
+        h1 = self.container.h
+        h2 = self.slide_bar.bg_rect.h
+        dy = h1 / h2 * (p1 - p2)
+        self.container.bottom = self.container_floor + dy
+
+    def update_objs_pos(self):
+        dy = self.offset_y - self.container.top
+        for sprite in [*self.buttons_filters.sprites(), *self.text_boxes]:
+            sprite.rect.y = sprite.yi - dy
+
     def update(self):
         self.buttons.update()
+        self.slide_bar.update()
+        self.update_container_pos()
+        self.update_objs_pos()
 
 
 class PullScreen(PackContentScreen):
-    def __init__(self, pack_name: str, last_pull: list):
-        super().__init__(pack_name)
+    def __init__(self, pack_id: str, last_pull: list):
+        super().__init__(pack_id)
 
         # properties
         self.card_list = last_pull
@@ -1103,7 +1174,7 @@ class PullScreen(PackContentScreen):
         self.set_counter()
         self.set_cards(self.card_set)
         self.reset()
-        self.filter_buttons = RarityFilters(pack_name, self.container_w, self.container.left, self.filter)
+        self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.left, self.filter)
 
     def filter(self, rarity=''):
         if rarity:
@@ -1114,7 +1185,7 @@ class PullScreen(PackContentScreen):
 
     def organize_pull(self):
         organized_list = []
-        for rarity in ('Ultra Rare', 'Super Rare', 'Rare', 'Common'):
+        for rarity in all_rarities[::-1]:
             for card_id in self.pack_info[rarity]:
                 if card_id in self.card_set:
                     organized_list.append(card_id)
@@ -1129,12 +1200,19 @@ class SelectionScreen:
     def __init__(self):
 
         # properties
-        self.spaccing = 7
-        self.preview_bg_w = round(0.213 * display_w) + 2 * self.spaccing
+        self.filters = []
+        self.packs = {}
         self.pack_hovered = None
         self.pack_locked = None
+        self.spaccing = 7
+        self.tags = {'tag': [], 'release': [], 'name': []}
 
-        # sample pack
+        # settings
+        self.preview_bg_w = round(0.213 * display_w) + 2 * self.spaccing
+        self.set_tags()
+
+        # packs
+        self.load_packs()
         pack = BoosterPack('LOB')
 
         # preview bg
@@ -1179,13 +1257,13 @@ class SelectionScreen:
 
         # button config setup
         button_h = display_h * .08
-        button = ButtonIcon(2 * [button_h], 'button_config_on', 'button_config_off', self.go_to_config_screen)
+        button = ButtonIcon(2 * [button_h], 'config', self.go_to_config_screen)
         button.rect.topright = display_w - display_h * .025, display_h * .025
         last_left = button.rect.left
         self.buttons.add(button)
 
         # button filter setup
-        button = ButtonIcon(2 * [button_h], 'button_filter_on', 'button_filter_off', self.go_to_filter_screen)
+        button = ButtonIcon(2 * [button_h], 'filter', self.go_to_filter_screen)
         button.rect.topright = last_left - display_h * .025, display_h * .025
         self.buttons.add(button)
 
@@ -1253,13 +1331,17 @@ class SelectionScreen:
     @staticmethod
     def go_to_config_screen():
         if "config" not in game.screens:
-            game.screens["config"] = PackFilterScreen()
+            game.screens["config"] = ConfigScreen()
         game.hovered.empty()
         game.screen = game.screens["config"]
 
     def go_to_pack_content_screen(self):
         if self.pack_hovered is not None:
             game.screen = PackContentScreen(self.pack_hovered)
+
+    def load_packs(self):
+        for pack_id in packs_info:
+            self.packs[pack_id] = BoosterPack(pack_id, init_mode='mini')
 
     def set_description(self, pack, space=10):
 
@@ -1288,6 +1370,33 @@ class SelectionScreen:
             self.description.blit(text, text_rect)
             last_bottom = text_rect.bottom
 
+    def set_filters(self):
+        pack_list = list(packs_info.keys())
+        if not self.filters:
+            self.set_pages(pack_list)
+            return
+
+        tags = [fl for fl in self.filters if fl in self.tags['tag']]
+        releases = [fl for fl in self.filters if fl in self.tags['release']]
+        names = [fl for fl in self.filters if fl in self.tags['name']]
+
+        # tag/description filter
+        if tags:
+            filtered_packs = [pack_id for pack_id in pack_list if packs_info[pack_id]['description'] in tags]
+            pack_list = filtered_packs
+
+        # release filter
+        if releases:
+            filtered_packs = [pack_id for pack_id in pack_list if packs_info[pack_id]['release'] in releases]
+            pack_list = filtered_packs
+
+        # name filter
+        if names:
+            filtered_packs = [pack_id for pack_id in pack_list if packs_info[pack_id]['name'][0][0] in names]
+            pack_list = filtered_packs
+
+        self.set_pages(pack_list)
+
     def set_pages(self, packs):
         """Creates a dict with all packs in position"""
         pack = BoosterPack('LOB')
@@ -1296,16 +1405,24 @@ class SelectionScreen:
             last_bottom = self.margin_y
             for row in page:
                 last_right = self.preview_bg_w + self.margin_x
-                for pack_code in row:
-                    pack = BoosterPack(pack_code, init_mode='mini')
+                for pack_id in row:
+                    pack = self.packs[pack_id]
                     pack.mini.rect.topleft = last_right, last_bottom
                     pack_sprites.add(pack)
                     last_right = pack.mini.rect.right + self.spaccing
                 last_bottom = pack.mini.rect.bottom + self.spaccing
             self.pages[i] = pack_sprites
 
+    def set_tags(self):
+        for pack in packs_info.values():
+            if pack['description'] not in self.tags['tag']:
+                self.tags['tag'].append(pack['description'])
+            if pack['release'] not in self.tags['release']:
+                self.tags['release'].append(pack['release'])
+        self.tags['name'] = list(string.ascii_uppercase)
+
     def switch_next_page(self):
-        if self.cur_page < len(self.pages):
+        if self.cur_page < len(self.pages) - 1:
             self.cur_page += 1
 
     def switch_previous_page(self):
@@ -1353,7 +1470,7 @@ class UnpackScreen:
     def __init__(self, current_pack, last_pull=[]):
 
         # properties
-        self.pack_name = current_pack
+        self.pack_id = current_pack
         self.pack = BoosterPack(current_pack)
         self.cards = pygame.sprite.LayeredUpdates()
         self.card_moving = False
@@ -1424,18 +1541,20 @@ class UnpackScreen:
                     game.screen = game.screens['choose']
 
     def check_pull(self):
-        game.screen = PullScreen(self.pack_name, self.pull)
-
-    '''def draw_counter(self, surface: pygame.Surface):
-        surf = self.font.render(f'{self.counter}/{len(self.cards)}', True, Color('white'))
-        rect = surf.get_rect(midtop=(self.card_midbottom[0] + 13, self.card_midbottom[1]))
-        surface.blit(surf, rect)'''
+        game.screen = PullScreen(self.pack_id, self.pull)
 
     def generate_pack(self, info):
+
+        # setup
         self.cards.empty()
+        cards = []
 
         # Fill with common cards
-        cards = [random.choice(info['Common']) for _ in range(info['#cards'] - 1)]
+        commons_available = list(info['Common'])
+        for _ in range(info['#cards'] - 1):
+            card = random.choice(commons_available)
+            cards.append(card)
+            commons_available.remove(card)
 
         # get the main rarity and others
         main_rarity, other_rarities = '', []
@@ -1507,7 +1626,7 @@ class UnpackScreen:
 
     def new_pack(self):
         game.hovered.empty()
-        game.screens['unpack'] = UnpackScreen(self.pack_name, self.pull)
+        game.screens['unpack'] = UnpackScreen(self.pack_id, self.pull)
         game.screen = game.screens['unpack']
 
     def switch_next_card(self):
@@ -1554,7 +1673,7 @@ class UnpackScreen:
 
 # UTILITY
 class PacksTool:
-    def __init__(self, pack_info:dict):
+    def __init__(self, pack_info: dict):
         self.pack_info = pack_info
 
     @staticmethod
@@ -1582,14 +1701,9 @@ class PacksTool:
     def get_rarities_from_list(self, card_list: list):
         rarities = {r: [] for r in all_rarities}
         for card_id in card_list:
-            if card_id in self.pack_info['Common']:
-                rarities['Common'].append(card_id)
-            elif card_id in self.pack_info['Rare']:
-                rarities['Rare'].append(card_id)
-            elif card_id in self.pack_info['Super Rare']:
-                rarities['Super Rare'].append(card_id)
-            elif card_id in self.pack_info['Ultra Rare']:
-                rarities['Ultra Rare'].append(card_id)
+            for rarity in all_rarities:
+                if rarity in self.pack_info and card_id in self.pack_info[rarity]:
+                    rarities[rarity].append(card_id)
         return rarities
 
 
@@ -1600,9 +1714,8 @@ class Game:
         self.display = pygame.display.set_mode((display_w, display_h))
 
         # icon
-        '''icon = pygame.image.load('textures/AppIcon.png').convert_alpha()
-        icon = pygame.transform.smoothscale(icon.copy(), (32, 32))
-        pygame.display.set_icon(icon)'''
+        icon = pygame.image.load('textures/icon.png').convert_alpha()
+        pygame.display.set_icon(icon)
 
         # bg
         self.bg = pygame.transform.smoothscale(
@@ -1681,7 +1794,6 @@ if __name__ == '__main__':
 
     # Packs info
     packs_info = download_packs_info()
-    print(PacksTool({}).get_all_cards())
 
     # SFXs
     sfx_open_pack = pygame.mixer.Sound('sound/attack.wav')
