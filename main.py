@@ -875,15 +875,35 @@ class ConfigScreen:
     def __init__(self):
         # properties
         self.buttons = pygame.sprite.Group()
+        self.text_boxes = pygame.sprite.Group()
+        offset_y = display_h * .05
 
         # back button
-        btn_back = ButtonIcon(2 * [display_w * .04], 'back', self.quit)
-        btn_back.rect.topleft = 2 * [display_h * .025]
-        self.buttons.add(btn_back)
+        btn = ButtonIcon(2 * [display_w * .04], 'back', self.quit)
+        btn.rect.topleft = 2 * [display_h * .025]
+        self.buttons.add(btn)
+
+        # fullscreen option
+        '''tbox = TextBox('Fullscreen', display_w * .85)
+        tbox.rect.topleft = btn.rect.right + display_h * .05, offset_y
+        btn_w = tbox.rect.h * .7
+        btn = ButtonToggle(
+            width=btn_w, height=btn_w,
+            idle_color='red', toggled_color='green',
+            idle_border_color='gray', toggled_border_color='gray',
+            deactivate_on_click=True,
+            on_activation=game.set_fullscreen,
+            on_deactivation=game.set_fullscreen
+        )
+        btn.rect.midright = tbox.rect.midright
+        self.buttons.add(btn)
+        self.text_boxes.add(tbox)
+        '''
 
     def draw(self, surface: pygame.Surface):
         surface.fill('black')
         surface.blit(game.bg, (0, 0))
+        self.text_boxes.draw(surface)
         self.buttons.draw(surface)
 
     @staticmethod
@@ -953,6 +973,7 @@ class PackContentScreen:
 
     @staticmethod
     def quit():
+        game.hovered.empty()
         game.screen = game.screens['choose']
 
     def reset(self):
@@ -1186,9 +1207,10 @@ class PullScreen(PackContentScreen):
     def organize_pull(self):
         organized_list = []
         for rarity in all_rarities[::-1]:
-            for card_id in self.pack_info[rarity]:
-                if card_id in self.card_set:
-                    organized_list.append(card_id)
+            if rarity in self.pack_info:
+                for card_id in self.pack_info[rarity]:
+                    if card_id in self.card_set:
+                        organized_list.append(card_id)
         self.card_set = organized_list
 
     def set_counter(self):
