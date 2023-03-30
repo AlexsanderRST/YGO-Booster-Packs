@@ -625,6 +625,36 @@ class CardMiniature(pygame.sprite.Sprite):
         self.image.blit(surf, rect)
 
 
+class CounterPackCards(pygame.sprite.Sprite):
+    def __init__(self, width=100, height=100):
+        super().__init__()
+
+        # properties
+        self.cards_cur = 0
+        self.cards_total = 0
+        self.font = pygame.font.Font('fonts/Roboto-Regular.ttf', 18)
+        self.size = width, height
+
+        # image & rect
+        self.image = pygame.Surface(self.size, SRCALPHA)
+        self.rect = self.image.get_rect()
+
+    def redraw(self):
+        self.image = pygame.Surface(self.size, SRCALPHA)
+        bg = pygame.Surface(self.size)
+        bg.fill('black')
+        bg.set_alpha(128)
+        text = self.font.render(f'{self.cards_cur}/{self.cards_total}', True, 'white')
+        text_rect = text.get_rect(midright=(self.rect.w * .95, self.rect.h * .5))
+        self.image.blit(bg, (0, 0))
+        pygame.draw.rect(self.image, 'darkgray', [0, 0, *self.rect.size], 1)
+        self.image.blit(text, text_rect)
+
+    def update(self, cards_cur: int, cards_total: int):
+        self.cards_cur, self.cards_total = cards_cur, cards_total
+        self.redraw()
+
+
 class Particle(pygame.sprite.Sprite):
     def __init__(self, size, color='white', start_alpha=128):
         super().__init__()
@@ -657,11 +687,12 @@ class RarityFilters(pygame.sprite.Group):
     def __init__(self,
                  pack_id: str,
                  container_w: float,
-                 container_left: float,
+                 container_right: float,
                  custom_filter=lambda: None):
         super().__init__()
 
         # properties
+        container_w *= .8
         pack_info = packs_info[pack_id]
         self.tool = PacksTool(packs_info[pack_id])
 
@@ -672,16 +703,18 @@ class RarityFilters(pygame.sprite.Group):
                 filters.append([rarity_symbol[r], r])
 
         # set button filters
-        container_w, height, y = round(container_w / len(filters)), round(display_h * .09), round(display_h * .015)
-        last_right = container_left
-        for r in filters:
-            button = ButtonToggle(container_w, height,
-                                  icon_path=f'textures/rlabel_{r[0]}.png',
-                                  on_activation=custom_filter,
-                                  on_activation_args=[r[1]])
-            button.rect.topleft = last_right, y
-            self.add(button)
-            last_right = button.rect.right
+        btn_w, btn_h, y = round(container_w / len(filters)), round(display_h * .0875), round(display_h * .015)
+        last_left = container_right
+        for r in filters[::-1]:
+            btn_args = {'width': btn_w, 'height': btn_h, 'on_activation': custom_filter, 'on_activation_args': [r[1]]}
+            if r[0] == 'all':
+                btn_args['text'], btn_args['text_size'] = 'ALL', 26
+            else:
+                btn_args['icon_path'] = f'textures/rlabel_{r[0]}.png'
+            btn = ButtonToggle(**btn_args)
+            btn.rect.topright = last_left, y
+            self.add(btn)
+            last_left = btn.rect.left
 
     def deactivate_all(self):
         for button in self:
@@ -935,6 +968,7 @@ class PackContentScreen:
         self.load_cards()
         self.cards = pygame.sprite.Group()
         self.set_cards(self.tool.get_all_cards_from_pack())
+        self.counter_cards_total = len(self.cards)
 
         # container
         self.container = pygame.Rect([0, 0, 0, 0])
@@ -942,7 +976,7 @@ class PackContentScreen:
         self.set_container()
 
         # rarity filter buttons
-        self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.left, self.filter)
+        self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.right, self.filter)
 
         # slide bar
         self.slide_bar = None
@@ -951,8 +985,16 @@ class PackContentScreen:
         # back buton
         filter_button_rect = self.filter_buttons.sprites()[0].rect
         button_back = ButtonIcon(2 * [filter_button_rect.h * .8], 'back', self.quit)
-        button_back.rect.midleft = display_w * 0.005, filter_button_rect.centery
+        button_back.rect.midleft = self.container.left, filter_button_rect.centery
         self.button_back = pygame.sprite.GroupSingle(button_back)
+
+        # card pack counter
+        filter_button = self.filter_buttons.sprites()[-1]
+        counter_cards_w = filter_button.rect.left - self.container.left
+        counter_cards_h = filter_button.rect.h * .5
+        counter_cards = CounterPackCards(counter_cards_w, counter_cards_h)
+        counter_cards.rect.bottomright = self.container.right, display_h * .9725
+        self.counter_cards = pygame.sprite.GroupSingle(counter_cards)
 
     def check_events(self):
         for event in game.events:
@@ -1024,6 +1066,7 @@ class PackContentScreen:
         self.slide_bar.draw(surface)
         self.filter_buttons.draw(surface)
         self.button_back.draw(surface)
+        self.counter_cards.draw(surface)
 
     def update_container_pos(self):
         p1 = self.slide_bar.bg_rect.bottom
@@ -1045,6 +1088,7 @@ class PackContentScreen:
         self.update_cards_pos()
         self.filter_buttons.update()
         self.button_back.update()
+        self.counter_cards.update(len(self.cards), self.counter_cards_total)
 
 
 class PackFilterScreen:
@@ -1195,7 +1239,7 @@ class PullScreen(PackContentScreen):
         self.set_counter()
         self.set_cards(self.card_set)
         self.reset()
-        self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.left, self.filter)
+        self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.right, self.filter)
 
     def filter(self, rarity=''):
         if rarity:
@@ -1708,8 +1752,13 @@ class PacksTool:
         return cards
 
     def get_all_cards_from_pack(self):
+        main_card, rarities_list = self.pack_info['cover'], []
+        if main_card in self.pack_info['Ultra Rare']:
+            rarities_list = alt_rarities[::-1]
+        elif 'Secret Rare' in self.pack_info and main_card in self.pack_info['Secret Rare']:
+            rarities_list = all_rarities[::-1]
         cards_list = []
-        rarities = [r for r in all_rarities[::-1] if r in self.pack_info]
+        rarities = [r for r in rarities_list if r in self.pack_info]
         for i in rarities:
             for j in self.pack_info[i]:
                 cards_list.append(j)
@@ -1810,6 +1859,7 @@ if __name__ == '__main__':
     # rarities
     rarity_symbol = {'Common': 'n', 'Rare': 'r', 'Super Rare': 'sr', 'Ultra Rare': 'ur', 'Secret Rare': 'se'}
     all_rarities = ('Common', 'Rare', 'Super Rare', 'Ultra Rare', 'Secret Rare')
+    alt_rarities = ('Common', 'Rare', 'Secret Rare', 'Super Rare', 'Ultra Rare')
 
     # Game
     game = Game()
