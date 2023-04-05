@@ -643,11 +643,10 @@ class CounterPackCards(pygame.sprite.Sprite):
         self.image = pygame.Surface(self.size, SRCALPHA)
         bg = pygame.Surface(self.size)
         bg.fill('black')
-        bg.set_alpha(128)
         text = self.font.render(f'{self.cards_cur}/{self.cards_total}', True, 'white')
         text_rect = text.get_rect(midright=(self.rect.w * .95, self.rect.h * .5))
         self.image.blit(bg, (0, 0))
-        pygame.draw.rect(self.image, 'darkgray', [0, 0, *self.rect.size], 1)
+        pygame.draw.rect(self.image, 'darkgray', [-1, 0, self.rect.w + 2, self.rect.h], 1)
         self.image.blit(text, text_rect)
 
     def update(self, cards_cur: int, cards_total: int):
@@ -984,7 +983,7 @@ class PackContentScreen:
 
         # back buton
         filter_button_rect = self.filter_buttons.sprites()[0].rect
-        button_back = ButtonIcon(2 * [filter_button_rect.h * .8], 'back', self.quit)
+        button_back = ButtonIcon(2 * [filter_button_rect.h * .9], 'back', self.quit)
         button_back.rect.midleft = self.container.left, filter_button_rect.centery
         self.button_back = pygame.sprite.GroupSingle(button_back)
 
@@ -1876,5 +1875,7 @@ if __name__ == '__main__':
     # volumes
     sfx_open_pack.set_volume(0.2)
     sfx_next_srcard.set_volume(0.4)
+
+    print(PacksTool({}).get_all_cards())
 
     game.run()
