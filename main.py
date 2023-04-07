@@ -15,23 +15,6 @@ import pygame
 
 pygame.init()
 
-info_sample = {"name": [],
-               "cover": "",
-               "description": "",
-               "release": "",
-               "#cards": 9,
-               "head height": 20,
-               "art x": -48,
-               "rarity pos": "middle",
-               "Common": [],
-               "Rare": [],
-               "Super Rare": [],
-               "Ultra Rare": [],
-               "%R": 1, "%SR": 5, "%UR": 12},
-
-
-# Short Print = Common
-
 
 def download_packs_info():
     """url = 'https://raw.githubusercontent.com/AlexsanderRST/EDOPro-Booster-Packs/main/BoosterPacks.json'
@@ -43,16 +26,6 @@ def download_packs_info():
         game.leave()"""
     with open('BoosterPacks.json', 'r') as fp:
         return json.load(fp)
-
-
-def get_next_color(color, r_speed, g_speed, b_speed):
-    next_color = [color[0] + r_speed, color[1] + g_speed, color[2] + b_speed]
-    for i, ch in enumerate(next_color):
-        if ch < 0:
-            next_color[i] = 0
-        elif ch > 255:
-            next_color[i] = 255
-    return next_color
 
 
 # OBJECTS
@@ -118,6 +91,7 @@ class BoosterPack(pygame.sprite.Group):
     def get_surface(self):
         try:
             surface = pygame.image.load(f'pics/booster/{self.code}.png').convert_alpha()
+            surface = pygame.transform.smoothscale(surface.copy(), (self.width, self.height))
         except FileNotFoundError:
             
             # setup
@@ -356,7 +330,7 @@ class ButtonToggle(pygame.sprite.Sprite):
 
 
 class Card(pygame.sprite.Sprite):
-    def __init__(self, card_id, pack_info, overlay=False):
+    def __init__(self, card_id, pack_info):
         super().__init__()
 
         # properties
@@ -386,20 +360,6 @@ class Card(pygame.sprite.Sprite):
         self.pos = self.rect.center
         self.vel = pygame.math.Vector2()
         self.anim = self.idle
-
-        # rarity effect
-        if not overlay:
-            self.rarity_effect = self.Overlay(self.image)
-        else:
-            match self.rarity:
-                case 'Rare':
-                    self.rarity_effect = self.ROverlay(self.image)
-                case 'Super Rare':
-                    self.rarity_effect = self.SROverlay(self.image)
-                case 'Ultra Rare':
-                    self.rarity_effect = self.UROverlay(self.image)
-                case _:
-                    self.rarity_effect = self.Overlay(self.image)
 
     def check_hovered(self):
         if self.rect.collidepoint(pygame.mouse.get_pos()):
@@ -449,7 +409,6 @@ class Card(pygame.sprite.Sprite):
     def redraw(self):
         self.image = pygame.Surface(self.image_size, SRCALPHA)
         self.image.blit(self.pic, (0, self.rlabel.image.get_height()))
-        self.rarity_effect.apply(self.image)
         pygame.sprite.GroupSingle(self.rlabel).draw(self.image)
 
     def update(self):
@@ -459,126 +418,6 @@ class Card(pygame.sprite.Sprite):
         self.pos += self.vel
         self.rect.center = self.pos
         self.anim()
-
-    class Overlay:
-        def __init__(self, card_surf: pygame.Surface):
-            self.surf = card_surf
-
-        def apply(self, *args):
-            pass
-
-    class ROverlay(Overlay):
-        def __init__(self, card_surf: pygame.Surface):
-            super().__init__(card_surf)
-            self.mask = pygame.image.load('textures/mask.png').convert_alpha()
-            self.mask = pygame.transform.smoothscale(self.mask, 2 * [self.surf.get_height()])
-            self.mask_end_x = self.surf.get_width() * 3
-            self.mask_start_x = - self.mask_end_x
-            self.mask_rect = self.mask.get_rect(left=self.mask_start_x)
-            self.mask_pos = pygame.math.Vector2(self.mask_rect.center)
-            self.mask_speed = 10
-
-        def apply(self, surface: pygame.Surface):
-            self.mask_pos = pygame.math.Vector2(self.mask_rect.center)
-            self.mask_pos.x += self.mask_speed
-            if self.mask_pos.x > self.mask_end_x:
-                self.mask_pos.x = self.mask_start_x
-            self.mask_rect.center = self.mask_pos.xy
-            surface.blit(self.mask, self.mask_rect)
-
-    class SROverlay(Overlay):
-        def __init__(self, card_surf: pygame.Surface):
-            super().__init__(card_surf)
-            # mask
-            self.mask = pygame.Surface(card_surf.get_size(), SRCALPHA)
-            self.mask_rect = self.mask.get_rect()
-            pygame.draw.rect(self.mask, '#f8d100', self.mask_rect, width=10)
-            self.mask.set_alpha(50)
-            self.mask_alpha_speed = 1
-            self.mask_alpha_max = 128
-            self.mask_alpha_min = 64
-
-            # particles
-            self.particles = pygame.sprite.Group()
-            self.particle_max = 20
-
-        def set_mask_alpha(self):
-            mask_alpha = self.mask.get_alpha()
-            mask_alpha += self.mask_alpha_speed
-            if mask_alpha > self.mask_alpha_max:
-                mask_alpha = self.mask_alpha_max
-                self.mask_alpha_speed *= -1
-            elif mask_alpha < self.mask_alpha_min:
-                mask_alpha = self.mask_alpha_min
-                self.mask_alpha_speed *= -1
-            self.mask.set_alpha(round(mask_alpha))
-
-        def update_particles(self):
-            if len(self.particles.sprites()) < self.particle_max:
-                particle = Particle(4, '#f8d100')
-                particle.rect.centerx = random.randint(0, self.mask.get_width())
-                particle.rect.centery = random.randint(0, self.mask.get_height())
-                self.particles.add(particle)
-            self.particles.update()
-
-        def apply(self, surface: pygame.Surface):
-            self.set_mask_alpha()
-            self.update_particles()
-            surface.blit(self.mask, self.mask_rect)
-            self.particles.draw(surface)
-
-    class UROverlay(Overlay):
-        def __init__(self, card_surf: pygame.Surface):
-            super().__init__(card_surf)
-            self.colors = ('#f664ed', '#6b6efe', '#0fe4eb', '#05bb41')
-
-            # mask
-            self.mask = pygame.Surface(card_surf.get_size(), SRCALPHA)
-            self.mask_rect = self.mask.get_rect()
-            pygame.draw.rect(self.mask, random.choice(self.colors), self.mask_rect, width=10)
-            self.mask.set_alpha(50)
-            self.mask_alpha_speed = 2.2
-            self.mask_alpha_max = 128
-            self.mask_alpha_min = 0
-
-            # particles
-            self.particles = pygame.sprite.Group()
-            self.particle_max = 30
-
-        def set_mask_alpha(self):
-            mask_alpha = self.mask.get_alpha()
-            mask_alpha += self.mask_alpha_speed
-            if mask_alpha > self.mask_alpha_max:
-                mask_alpha = self.mask_alpha_max
-                self.mask_alpha_speed *= -1
-            elif mask_alpha < self.mask_alpha_min:
-                mask_alpha = self.mask_alpha_min
-                self.mask_alpha_speed *= -1
-                self.mask = pygame.Surface(self.mask.get_size(), SRCALPHA)
-                pygame.draw.rect(self.mask, random.choice(self.colors), self.mask_rect, width=10)
-            self.mask.set_alpha(round(mask_alpha))
-
-        @staticmethod
-        def particle_a():
-            return 4, 'white'
-
-        def particle_b(self):
-            return random.randint(10, 20), random.choice(self.colors)
-
-        def update_particles(self):
-            if len(self.particles.sprites()) < self.particle_max:
-                size, color = random.choice([self.particle_a, self.particle_b])()
-                particle = Particle(size, color)
-                particle.rect.centerx = random.randint(0, self.mask.get_width())
-                particle.rect.centery = random.randint(0, self.mask.get_height())
-                self.particles.add(particle)
-            self.particles.update()
-
-        def apply(self, surface: pygame.Surface):
-            self.set_mask_alpha()
-            self.update_particles()
-            surface.blit(self.mask, self.mask_rect)
-            self.particles.draw(surface)
 
 
 class CardMiniature(pygame.sprite.Sprite):
@@ -652,24 +491,6 @@ class CounterPackCards(pygame.sprite.Sprite):
     def update(self, cards_cur: int, cards_total: int):
         self.cards_cur, self.cards_total = cards_cur, cards_total
         self.redraw()
-
-
-class Particle(pygame.sprite.Sprite):
-    def __init__(self, size, color='white', start_alpha=128):
-        super().__init__()
-        self.alpha_speed = 5.0
-        self.image = pygame.Surface(2 * [size], SRCALPHA)
-        self.rect = self.image.get_rect()
-        pygame.draw.ellipse(self.image, color, self.rect)
-        self.image.set_alpha(start_alpha)
-
-    def update(self):
-        alpha = self.image.get_alpha()
-        alpha -= self.alpha_speed
-        if alpha <= 0:
-            self.kill()
-        else:
-            self.image.set_alpha(alpha)
 
 
 class RarityLabel(pygame.sprite.Sprite):
@@ -1280,10 +1101,6 @@ class SelectionScreen:
         self.load_packs()
         pack = BoosterPack('LOB')
 
-        # preview bg
-        self.preview_bg = pygame.Surface((self.preview_bg_w, display_h))
-        self.preview_bg.set_alpha(128)
-
         # calculates the number of packs per row and col
         selection_w = display_w - self.preview_bg_w
         self.cols = int((selection_w + self.spaccing) / (pack.mini.rect.w + self.spaccing))
@@ -1297,6 +1114,10 @@ class SelectionScreen:
         self.pages = {}
         self.cur_page = 0
         self.set_pages(list(packs_info.keys()))
+
+        # preview bg
+        self.preview_bg = pygame.Surface((self.preview_bg_w, display_h))
+        self.preview_bg.set_alpha(round(255 * .8))
 
         # preview image
         preview = pygame.sprite.Sprite()
@@ -1312,6 +1133,7 @@ class SelectionScreen:
 
         # buttons
         self.buttons = pygame.sprite.Group()
+        button_right = max([p.sprites()[0].rect.right for p in self.pages[0]])
 
         # button detail setup
         button_w = round(self.preview_bg_w * .8)
@@ -1323,7 +1145,7 @@ class SelectionScreen:
         # button config setup
         button_h = display_h * .08
         button = ButtonIcon(2 * [button_h], 'config', self.go_to_config_screen)
-        button.rect.topright = display_w - display_h * .025, display_h * .025
+        button.rect.topright = button_right, display_h * .025
         last_left = button.rect.left
         self.buttons.add(button)
 
@@ -1332,9 +1154,18 @@ class SelectionScreen:
         button.rect.topright = last_left - display_h * .025, display_h * .025
         self.buttons.add(button)
 
+        # next page and previous page button
+        btn_next_pg_right = max([p.sprites()[0].rect.right for p in self.pages[0]])
+        btn_prev_pg_left = min([p.sprites()[0].rect.left for p in self.pages[0]])
+        self.btn_next_pg = ButtonIcon(button.rect.size, 'fowa', self.switch_next_page)
+        self.btn_prev_pg = ButtonIcon(button.rect.size, 'back', self.switch_previous_page)
+        self.btn_next_pg.rect.bottomright = btn_next_pg_right, display_h - display_h * .025
+        self.btn_prev_pg.rect.bottomleft = btn_prev_pg_left, display_h - display_h * .025
+        self.set_switch_pages_buttons()
+
     def check_events(self):
         for event in game.events:
-            if event.type == QUIT:
+            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 game.loop = False
             elif event.type == MOUSEBUTTONDOWN:
                 if event.button == 4:
@@ -1351,12 +1182,12 @@ class SelectionScreen:
                     for pack in self.pages[self.cur_page]:
                         if pack.hovered(event.pos):
                             if self.pack_locked is None:
-                                self.pack_locked = pack
+                                self.pack_locked = [pack, self.cur_page]
                             else:
-                                if self.pack_locked == pack:
+                                if self.pack_locked[0] == pack:
                                     self.pack_locked = None
                                 else:
-                                    self.pack_locked = pack
+                                    self.pack_locked = [pack, self.cur_page]
 
     def check_pack_hovered(self):
         for pack in self.pages[self.cur_page]:
@@ -1364,7 +1195,7 @@ class SelectionScreen:
                 game.hovered.remove(pack)
             else:
                 game.hovered.add(pack)
-                if any([self.pack_locked is None, pack == self.pack_locked]):
+                if self.pack_locked is None or pack == self.pack_locked[0]:
                     self.preview_image.sprite.image = pack.preview.image
                     self.set_description(pack)
                     self.pack_hovered = pack.code
@@ -1478,6 +1309,17 @@ class SelectionScreen:
                 last_bottom = pack.mini.rect.bottom + self.spaccing
             self.pages[i] = pack_sprites
 
+    def set_switch_pages_buttons(self):
+        self.btn_next_pg.kill()
+        self.btn_prev_pg.kill()
+        if len(self.pages) > 1:
+            if self.cur_page == 0:
+                self.buttons.add(self.btn_next_pg)
+            elif self.cur_page == len(self.pages) - 1:
+                self.buttons.add(self.btn_prev_pg)
+            else:
+                self.buttons.add(self.btn_next_pg, self.btn_prev_pg)
+
     def set_tags(self):
         for pack in packs_info.values():
             if pack['description'] not in self.tags['tag']:
@@ -1489,10 +1331,12 @@ class SelectionScreen:
     def switch_next_page(self):
         if self.cur_page < len(self.pages) - 1:
             self.cur_page += 1
+            self.set_switch_pages_buttons()
 
     def switch_previous_page(self):
         if self.cur_page > 0:
             self.cur_page -= 1
+            self.set_switch_pages_buttons()
 
     def draw(self, surface: pygame.Surface):
         surface.fill('black')
@@ -1505,8 +1349,8 @@ class SelectionScreen:
         self.draw_lock(surface)
 
     def draw_lock(self, surface: pygame.Surface):
-        if self.pack_locked is not None:
-            pack = self.pack_locked
+        if self.pack_locked is not None and self.cur_page == self.pack_locked[1]:
+            pack = self.pack_locked[0]
             pack_size = pack.mini.rect.size
             pack_topleft = pack.mini.rect.topleft
             pygame.draw.rect(surface, 'yellow', [*pack_topleft, *pack_size], 2)
@@ -1553,7 +1397,7 @@ class UnpackScreen:
         self.card_midbottom = self.cards.sprites()[0].rect.midbottom
 
         # font
-        self.font = pygame.font.Font('fonts/NotoSansJP-Regular.otf', 18)
+        self.font = pygame.font.Font('fonts/Roboto-Regular.ttf', 18)
         self.font.set_bold(True)
 
         # detail button (invisible)
@@ -1582,7 +1426,6 @@ class UnpackScreen:
                 if not self.open_pack:
                     if event.button in (1, 3) and not self.pack.openning:
                         self.pack.openning = True
-                        sfx_open_pack.play()
                 else:
                     card = self.cards.sprites()[0]
                     if event.button == 1:
@@ -1673,19 +1516,6 @@ class UnpackScreen:
         cards = self.cards.sprites()
         return cards[cards.index(card) - 1].rarity
 
-    def get_switch_card_sound(self, rarity=''):
-        if self.rarity_viewed:
-            return sfx_next_card
-        match rarity:
-            case 'Super Rare':
-                self.rarity_viewed = True
-                return sfx_next_srcard
-            case 'Ultra Rare':
-                self.rarity_viewed = True
-                return sfx_next_urcard
-            case _:
-                return sfx_next_card
-
     def get_top_card(self):
         return self.cards.get_top_sprite()
 
@@ -1699,7 +1529,6 @@ class UnpackScreen:
             card = self.get_top_card()
             self.get_next_card_rarity(card)
             card.anim = card.move_to_back
-            self.get_switch_card_sound(self.get_next_card_rarity(card)).play()
             self.counter += 1
             if self.counter > len(self.cards):
                 self.counter = 1
@@ -1709,7 +1538,6 @@ class UnpackScreen:
         if not self.card_moving:
             card = self.get_bottom_card()
             card.anim = card.move_to_front
-            sfx_next_card.play()
             self.counter -= 1
             if self.counter < 1:
                 self.counter = len(self.cards)
@@ -1851,7 +1679,6 @@ if __name__ == '__main__':
     display_w = 1152
     display_h = 648
     display_c = pygame.math.Vector2(round(display_w / 2), round(display_h / 2))
-
     card_size = 288, 420
     card_mini_size = 118, 172
 
@@ -1865,17 +1692,5 @@ if __name__ == '__main__':
 
     # Packs info
     packs_info = download_packs_info()
-
-    # SFXs
-    sfx_open_pack = pygame.mixer.Sound('sound/attack.wav')
-    sfx_next_card = pygame.mixer.Sound('sound/draw.wav')
-    sfx_next_srcard = pygame.mixer.Sound('sound/activate.wav')
-    sfx_next_urcard = pygame.mixer.Sound('sound/summon.wav')
-
-    # volumes
-    sfx_open_pack.set_volume(0.2)
-    sfx_next_srcard.set_volume(0.4)
-
-    print(PacksTool({}).get_all_cards())
 
     game.run()
