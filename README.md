@@ -13,7 +13,7 @@ A YGO's pack opening simulation.
 <details>
     <summary>OCG/TCG</summary>
 
-    Classic (Series 4 and below):
+    Classic (Series 4<):
         Legend of Blue Eyes White Dragon
         Metal Raiders
         Spell Ruler
@@ -29,7 +29,7 @@ A YGO's pack opening simulation.
         Rise of Destiny
         Flaming Eternity
 
-    GX (Series 4 to 5):
+    GX (Series 4-5):
         The Lost Millennium
         Cybernetic Revolution
         Elemental Energy
@@ -44,7 +44,7 @@ A YGO's pack opening simulation.
         Phantom Darkness
         Light of Destruction
 
-    5DS (Series 6 to 7):
+    5DS (Series 6-7):
         The Duelist Genesis
         Crossroads of Chaos
         Crimson Crisis
@@ -58,10 +58,23 @@ A YGO's pack opening simulation.
         Storm of Ragnarok
         Extreme Victory
 
-    ZEXAL (Series 7 to 8):
-    ARCV:
-    VRAINS:
-    Modern:
+    ZEXAL (Series 7-8):
+        Generation Force
+        Photon Shockwave
+        Order of Chaos
+        Galactic Overlord
+        Return of the Duelist
+        Abyss Rising
+        Cosmo Blazer
+        Lord of the Tachyon Galaxy
+        Judgment of the Light
+        Shadow Specters
+        Legacy of the Valiant
+        Primal Origin
+
+    ARCV (Series 9):
+    VRAINS (Series 10):
+    Modern (Series 11-12):
 
 </details>
 <details>
@@ -70,6 +83,13 @@ A YGO's pack opening simulation.
     The Ultimate Rising
     Eternal Stream
     Chaotic Soldiers
+
+</details>
+
+<details>
+    <summary>Tag Force 1</summary>
+
+    Good Ol' Days
 
 </details>
 
@@ -122,7 +142,7 @@ A YGO's pack opening simulation.
   
 ### Gallery 🖼️
 #### Selection Screen:
-![](https://i.ibb.co/SNyWX6d/epbp-1000-1.png)
+![](https://i.ibb.co/Qm6mGZ7/selection-screen-1.jpg)
 #### Content Screen:
 ![](https://i.ibb.co/XxfWm7d/content-screen-1.jpg)
 ![](https://i.ibb.co/vckScq2/content-screen-2.jpg)

@@ -250,11 +250,10 @@ class ButtonToggle(pygame.sprite.Sprite):
                  toggled_border_color='#80ff94',
                  start_activated=False,
                  deactivate_on_click=False,
-                 on_activation=lambda: None,
+                 on_activation=None,
                  on_activation_args=(),
-                 on_deactivation=lambda: None,
-                 on_deactivation_args=()
-                 ):
+                 on_deactivation=None,
+                 on_deactivation_args=()):
         super().__init__()
 
         # properties
@@ -301,12 +300,13 @@ class ButtonToggle(pygame.sprite.Sprite):
         self.redraw(*styles[bool(start_activated)])
 
     def activate(self):
-        self.on_activation(*self.on_activation_args)
-        self.activated = True
-        self.redraw(self.toggled_surf, self.toggled_border_color)
+        if self.on_activation is not None:
+            self.on_activation(*self.on_activation_args)
+        self.soft_activate()
 
     def deactivate(self):
-        self.on_deactivation(*self.on_deactivation_args)
+        if self.on_deactivation is not None:
+            self.on_deactivation(*self.on_deactivation_args)
         self.activated = False
         self.redraw(self.idle_surf, self.idle_border_color)
 
@@ -315,6 +315,10 @@ class ButtonToggle(pygame.sprite.Sprite):
         self.image.blit(surface, (0, 0))
         self.image.blit(self.content_surf, self.content_rect)
         pygame.draw.rect(self.image, border_color, [0, 0, *self.rect.size], self.border_size)
+
+    def soft_activate(self):
+        self.activated = True
+        self.redraw(self.toggled_surf, self.toggled_border_color)
 
     def update(self):
         if not self.rect.collidepoint(pygame.mouse.get_pos()):
@@ -496,7 +500,7 @@ class CounterPackCards(pygame.sprite.Sprite):
 class RarityLabel(pygame.sprite.Sprite):
     def __init__(self, rarity: str, scale=.45):
         super().__init__()
-        self.image = pygame.image.load(f'textures/rlabel_{rarity_symbol[rarity]}.png').convert_alpha()
+        self.image = pygame.image.load(f'textures/rlabel_{rarity_symbols[rarity]}.png').convert_alpha()
         new_size = round(self.image.get_width() * scale), round(self.image.get_height() * scale)
         self.image = pygame.transform.smoothscale(self.image, new_size)
         self.rect = self.image.get_rect()
@@ -504,40 +508,44 @@ class RarityLabel(pygame.sprite.Sprite):
 
 
 class RarityFilters(pygame.sprite.Group):
-    def __init__(self,
-                 pack_id: str,
-                 container_w: float,
-                 container_right: float,
-                 custom_filter=lambda: None):
+    def __init__(self, pack_id: str, container_w: float, container_right: float, custom_filter=None):
         super().__init__()
 
-        # properties
-        container_w *= .8
+        # Properties
+        container_w = int(container_w * .8)
         pack_info = packs_info[pack_id]
         self.tool = PacksTool(packs_info[pack_id])
 
-        # define filters
-        filters = [['all', '']]
-        for r in all_rarities:
-            if r in pack_info and len(pack_info[r]):
-                filters.append([rarity_symbol[r], r])
+        # Define filters
+        filters = {'all': ''}
+        for rarity in all_rarities:
+            if rarity in pack_info and len(pack_info[rarity]):
+                filters[rarity_symbols[rarity]] = rarity
 
-        # set button filters
-        btn_w, btn_h, y = round(container_w / len(filters)), round(display_h * .0875), round(display_h * .015)
+        # Set button filters
+        btn_w = container_w // len(filters)
+        btn_h = int(display_h * .0875)
+        y = int(display_h * .015)
         last_left = container_right
-        for r in filters[::-1]:
-            btn_args = {'width': btn_w, 'height': btn_h, 'on_activation': custom_filter, 'on_activation_args': [r[1]]}
-            if r[0] == 'all':
-                btn_args['text'], btn_args['text_size'] = 'ALL', 26
+        for rarity_symbol, rarity_name in reversed(filters.items()):
+            if rarity_symbol == 'all':
+                btn_args = {'text': 'ALL', 'text_size': 26}
             else:
-                btn_args['icon_path'] = f'textures/rlabel_{r[0]}.png'
+                btn_args = {"icon_path": f"textures/rlabel_{rarity_symbol}.png"}
+
+            if custom_filter is not None:
+                btn_args['on_activation'] = custom_filter
+                btn_args['on_activation_args'] = [rarity_name]
+
+            btn_args["width"] = btn_w
+            btn_args["height"] = btn_h
             btn = ButtonToggle(**btn_args)
-            btn.rect.topright = last_left, y
+            btn.rect.topright = (last_left, y)
             self.add(btn)
             last_left = btn.rect.left
 
     def deactivate_all(self):
-        for button in self:
+        for button in self.sprites():
             button.deactivate()
 
 
@@ -797,6 +805,7 @@ class PackContentScreen:
 
         # rarity filter buttons
         self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.right, self.filter)
+        self.filter_buttons.sprites()[-1].soft_activate()
 
         # slide bar
         self.slide_bar = None
@@ -1060,6 +1069,7 @@ class PullScreen(PackContentScreen):
         self.set_cards(self.card_set)
         self.reset()
         self.filter_buttons = RarityFilters(pack_id, self.container_w, self.container.right, self.filter)
+        self.filter_buttons.sprites()[-1].soft_activate()
 
     def filter(self, rarity=''):
         if rarity:
@@ -1332,11 +1342,13 @@ class SelectionScreen:
         if self.cur_page < len(self.pages) - 1:
             self.cur_page += 1
             self.set_switch_pages_buttons()
+            game.hovered.empty()
 
     def switch_previous_page(self):
         if self.cur_page > 0:
             self.cur_page -= 1
             self.set_switch_pages_buttons()
+            game.hovered.empty()
 
     def draw(self, surface: pygame.Surface):
         surface.fill('black')
@@ -1579,11 +1591,14 @@ class PacksTool:
         return cards
 
     def get_all_cards_from_pack(self):
-        main_card, rarities_list = self.pack_info['cover'], []
+        main_card = self.pack_info['cover'] if 'main card' not in self.pack_info else self.pack_info['main card']
+        rarities_list = []
         if main_card in self.pack_info['Ultra Rare']:
             rarities_list = alt_rarities[::-1]
         elif 'Secret Rare' in self.pack_info and main_card in self.pack_info['Secret Rare']:
             rarities_list = all_rarities[::-1]
+        elif main_card in self.pack_info['Super Rare']:
+            rarities_list = ['Super Rare'] + [r for r in alt_rarities[::-1] if r != 'Super Rare']
         cards_list = []
         rarities = [r for r in rarities_list if r in self.pack_info]
         for i in rarities:
@@ -1683,7 +1698,7 @@ if __name__ == '__main__':
     card_mini_size = 118, 172
 
     # rarities
-    rarity_symbol = {'Common': 'n', 'Rare': 'r', 'Super Rare': 'sr', 'Ultra Rare': 'ur', 'Secret Rare': 'se'}
+    rarity_symbols = {'Common': 'n', 'Rare': 'r', 'Super Rare': 'sr', 'Ultra Rare': 'ur', 'Secret Rare': 'se'}
     all_rarities = ('Common', 'Rare', 'Super Rare', 'Ultra Rare', 'Secret Rare')
     alt_rarities = ('Common', 'Rare', 'Secret Rare', 'Super Rare', 'Ultra Rare')
 
