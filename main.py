@@ -93,7 +93,7 @@ class BoosterPack(pygame.sprite.Group):
             surface = pygame.image.load(f'pics/booster/{self.code}.png').convert_alpha()
             surface = pygame.transform.smoothscale(surface.copy(), (self.width, self.height))
         except FileNotFoundError:
-            
+
             # setup
             self.head_height = 40
             surface = pygame.Surface((self.width, self.height), SRCALPHA)
@@ -622,7 +622,7 @@ class SlideBar:
             slider.pos.y += self.slider_vel.y
             slider.rect.centery = slider.pos.y
             if round(self.slider_vel.y) != 0:
-                self.slider_vel.y -= self.slider_vel.y/abs(self.slider_vel.y) * self.slider_decel
+                self.slider_vel.y -= self.slider_vel.y / abs(self.slider_vel.y) * self.slider_decel
             else:
                 self.slider_vel.y = 0
         self.check_constraint()
@@ -714,9 +714,7 @@ class CardDetailScreen:
 
     def event_check(self):
         for event in game.events:
-            if event.type == QUIT:
-                game.loop = False
-            elif event.type == MOUSEBUTTONDOWN:
+            if event.type == MOUSEBUTTONDOWN:
                 if event.button in (1, 3):
                     self.quit()
             elif event.type == KEYDOWN:
@@ -828,7 +826,7 @@ class PackContentScreen:
     def check_events(self):
         for event in game.events:
             if (event.type == KEYDOWN and event.key == K_ESCAPE) or \
-               (event.type == MOUSEBUTTONDOWN and event.button == 3):
+                    (event.type == MOUSEBUTTONDOWN and event.button == 3):
                 self.quit()
 
     def filter(self, rarity=''):
@@ -1093,11 +1091,10 @@ class PullScreen(PackContentScreen):
 
 
 class SelectionScreen:
-    def __init__(self):
+    def __init__(self, loaded_packs: dict = None):
 
         # properties
         self.filters = []
-        self.packs = {}
         self.pack_hovered = None
         self.pack_locked = None
         self.spaccing = 7
@@ -1108,7 +1105,9 @@ class SelectionScreen:
         self.set_tags()
 
         # packs
-        self.load_packs()
+        self.packs = loaded_packs
+        if loaded_packs is None:
+            self.load_packs()
         pack = BoosterPack('LOB')
 
         # calculates the number of packs per row and col
@@ -1175,7 +1174,7 @@ class SelectionScreen:
 
     def check_events(self):
         for event in game.events:
-            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+            if event.type == KEYDOWN and event.key == K_ESCAPE:
                 game.loop = False
             elif event.type == MOUSEBUTTONDOWN:
                 if event.button == 4:
@@ -1246,8 +1245,7 @@ class SelectionScreen:
             game.screen = PackContentScreen(self.pack_hovered)
 
     def load_packs(self):
-        for pack_id in packs_info:
-            self.packs[pack_id] = BoosterPack(pack_id, init_mode='mini')
+        self.packs = {pack_id: BoosterPack(pack_id, init_mode='mini') for pack_id in packs_info}
 
     def set_description(self, pack, space=10):
 
@@ -1430,11 +1428,9 @@ class UnpackScreen:
 
     def check_event(self):
         for event in game.events:
-            if event.type == QUIT:
-                game.loop = False
 
             # Mouse input
-            elif event.type == MOUSEBUTTONDOWN:
+            if event.type == MOUSEBUTTONDOWN:
                 if not self.open_pack:
                     if event.button in (1, 3) and not self.pack.openning:
                         self.pack.openning = True
@@ -1455,7 +1451,7 @@ class UnpackScreen:
                     elif event.button == 5:
                         self.switch_next_card()
 
-            # keyboard input
+            # Keyboard input
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     game.screen = game.screens['choose']
@@ -1625,14 +1621,15 @@ class Game:
     def __init__(self):
         # display
         self.display = pygame.display.set_mode((display_w, display_h))
+        self.display_mode = 'windowed'
 
         # icon
         icon = pygame.image.load('textures/icon.png').convert_alpha()
         pygame.display.set_icon(icon)
 
         # bg
-        self.bg = pygame.transform.smoothscale(
-            pygame.image.load('textures/bg_deck.png').convert(), (display_w, display_h))
+        self.bg_surf = pygame.image.load('textures/bg_deck.png').convert()
+        self.bg = pygame.transform.smoothscale(self.bg_surf.copy(), (display_w, display_h))
         self.bg.set_alpha(128)
 
         # properties
@@ -1652,13 +1649,13 @@ class Game:
         cursor = SYSTEM_CURSOR_HAND if len(self.hovered.sprites()) else SYSTEM_CURSOR_ARROW
         pygame.mouse.set_cursor(cursor)
 
-    def event_check(self):
+    def check_events(self):
         self.events = pygame.event.get()
         for event in self.events:
-            if event.type == KEYDOWN and event.key == K_d:
-                self.screen = PackContentScreen("LIOV")
             if event.type == QUIT:
                 self.leave()
+            elif event.type == KEYDOWN and event.key == K_f:
+                self.set_fullscreen()
 
     def leave(self):
         self.loop = False
@@ -1673,13 +1670,30 @@ class Game:
             deck.write('!side\n')"""
         pass
 
+    def set_fullscreen(self):
+        global display_w, display_h, display_c
+        if self.display_mode == 'windowed':
+            self.display_mode = 'fullscreen'
+            display_w, display_h = usr_display_w, usr_display_h
+            flags = FULLSCREEN
+        else:
+            self.display_mode = 'windowed'
+            display_w, display_h = 1152, 648
+            flags = 0
+        self.hovered.empty()
+        self.bg = pygame.transform.smoothscale(self.bg_surf.copy(), (display_w, display_h))
+        pygame.display.set_mode((display_w, display_h), flags)
+        display_c = pygame.math.Vector2(round(display_w / 2), round(display_h / 2))
+        self.screens = {'choose': SelectionScreen(self.screens['choose'].packs)}
+        self.screen = self.screens['choose']
+
     def run(self):
         self.screens['choose'] = SelectionScreen()
         self.screen = self.screens['choose']
         while self.loop:
             pygame.display.set_caption(f"Booster Packs {version} ({self.clock.get_fps() :.1f})")
             self.cursor_by_context()
-            self.event_check()
+            self.check_events()
             self.screen.update()
             self.screen.draw(self.display)
             pygame.display.update()
@@ -1691,6 +1705,9 @@ class Game:
 if __name__ == '__main__':
     # settings
     version = '1.2'
+    usr_display = pygame.display.Info()
+    usr_display_w = usr_display.current_w
+    usr_display_h = usr_display.current_h
     display_w = 1152
     display_h = 648
     display_c = pygame.math.Vector2(round(display_w / 2), round(display_h / 2))

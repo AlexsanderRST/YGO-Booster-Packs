@@ -122,6 +122,8 @@ A YGO's pack opening simulation.
 
 
 ### Controls 🕹️:
+### Anywhere
+- Press **f** key to toggle fullscreen.
 #### Selection Screen:
 - **LMB** to open the selected pack;
 - **RMB** to lock a pack;
