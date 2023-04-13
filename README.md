@@ -73,6 +73,19 @@ A YGO's pack opening simulation.
         Primal Origin
 
     ARCV (Series 9):
+        Duelist Alliance
+        The New Challengers
+        Secrets of Eternity
+        Crossed Souls
+        Clash of Rebellions
+        Dimension of Chaos
+        Breakers of Shadow
+        Shining Victories
+        The Dark Illusion
+        Invasion: Vengeance
+        Raging Tempest
+        Maximum Crisis
+  
     VRAINS (Series 10):
     Modern (Series 11-12):
 

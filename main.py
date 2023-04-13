@@ -1299,10 +1299,11 @@ class SelectionScreen:
             filtered_packs = [pack_id for pack_id in pack_list if packs_info[pack_id]['name'][0][0] in names]
             pack_list = filtered_packs
 
-        self.set_pages(pack_list)
+        self.set_pages(pack_list, True)
 
-    def set_pages(self, packs):
+    def set_pages(self, packs, reset_buttons=False):
         """Creates a dict with all packs in position"""
+        self.pages = {}
         pack = BoosterPack('LOB')
         for i, page in enumerate(self.get_pages(packs)):
             pack_sprites = self.Packs()
@@ -1316,6 +1317,8 @@ class SelectionScreen:
                     last_right = pack.mini.rect.right + self.spaccing
                 last_bottom = pack.mini.rect.bottom + self.spaccing
             self.pages[i] = pack_sprites
+        if reset_buttons:
+            self.set_switch_pages_buttons()
 
     def set_switch_pages_buttons(self):
         self.btn_next_pg.kill()
