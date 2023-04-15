@@ -87,6 +87,19 @@ A YGO's pack opening simulation.
         Maximum Crisis
   
     VRAINS (Series 10):
+        Code of the Duelist 
+        Circuit Break 
+        Extreme Force 
+        Flames of Destruction 
+        Cybernetic Horizon 
+        Soul Fusion 
+        Savage Strike 
+        Dark Neostorm 
+        Rising Rampage 
+        Chaos Impact 
+        Ignition Assault 
+        Eternity Code
+
     Modern (Series 11-12):
 
 </details>
