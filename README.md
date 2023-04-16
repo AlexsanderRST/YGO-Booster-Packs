@@ -101,6 +101,17 @@ A YGO's pack opening simulation.
         Eternity Code
 
     Modern (Series 11-12):
+        Rise of the Duelist 
+        Phantom Rage 
+        Blazing Vortex 
+        Lightning Overdrive 
+        Dawn of Majesty 
+        Burst of Destiny 
+        Battle of Chaos 
+        Dimension Force 
+        Power of the Elements 
+        Darkwing Blast 
+        Photon Hypernova
 
 </details>
 <details>

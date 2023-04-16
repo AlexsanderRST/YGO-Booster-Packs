@@ -1633,7 +1633,7 @@ class Game:
         # bg
         self.bg_surf = pygame.image.load('textures/bg_deck.png').convert()
         self.bg = pygame.transform.smoothscale(self.bg_surf.copy(), (display_w, display_h))
-        self.bg.set_alpha(128)
+        self.bg.set_alpha(69)
 
         # properties
         self.clock = pygame.time.Clock()
@@ -1685,6 +1685,7 @@ class Game:
             flags = 0
         self.hovered.empty()
         self.bg = pygame.transform.smoothscale(self.bg_surf.copy(), (display_w, display_h))
+        self.bg.set_alpha(69)
         pygame.display.set_mode((display_w, display_h), flags)
         display_c = pygame.math.Vector2(round(display_w / 2), round(display_h / 2))
         self.screens = {'choose': SelectionScreen(self.screens['choose'].packs)}
