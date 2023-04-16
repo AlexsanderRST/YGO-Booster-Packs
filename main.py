@@ -1389,7 +1389,7 @@ class SelectionScreen:
 
 
 class UnpackScreen:
-    def __init__(self, current_pack, last_pull=[]):
+    def __init__(self, current_pack, last_pull=()):
 
         # properties
         self.pack_id = current_pack
@@ -1398,7 +1398,7 @@ class UnpackScreen:
         self.card_moving = False
         self.open_pack = False
         self.rarity_viewed = False
-        self.pull = last_pull
+        self.pull = list(last_pull)
 
         # settings
         self.generate_pack(packs_info[current_pack])
