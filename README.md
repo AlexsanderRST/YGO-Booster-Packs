@@ -6,6 +6,8 @@
 
 A YGO's pack opening simulation.
 
+[<img src="https://static.itch.io/images/badge-color.svg" width="300" height="90">](https://alexsanderrst.itch.io/ygo-booster-packs)
+
 [![](https://i.ibb.co/c2C5rqc/print9.png)](https://www.youtube.com/watch?v=WR4_kItDj7A)
 
 [![](https://i.ibb.co/2MttBVV/thumb.png)](https://youtu.be/1RgupwYyNIw)
